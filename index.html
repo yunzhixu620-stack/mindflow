@@ -8,6 +8,10 @@
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsmind@0.9.1/es6/jsmind.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+</style>
+<!-- 移动端增强样式 -->
+<link rel="stylesheet" href="./mobile-enhance.css">
+<style>
 
   :root {
     --bg-base: #09090b;
@@ -757,8 +761,18 @@
 
     <!-- 侧边栏标题 -->
     <div class="sidebar-header">
-      <h3 id="modeTitle">会议助手</h3>
-      <p id="modeDesc">点击麦克风开始录音，或直接输入内容。AI 会实时生成思维导图。</p>
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div style="flex: 1;">
+          <h3 id="modeTitle" style="margin-bottom: 2px;">会议助手</h3>
+          <p id="modeDesc" style="font-size: 11px; color: var(--text-tertiary); line-height: 1.5; margin: 0;">点击麦克风开始录音，或直接输入内容。AI 会实时生成思维导图。</p>
+        </div>
+        <!-- 移动端折叠按钮 -->
+        <button class="btn-icon" onclick="toggleSidebar()" title="收起/展开侧边栏" style="flex-shrink: 0;" id="sidebarToggleBtn">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- 会议控制 -->
@@ -970,6 +984,35 @@ function init() {
   if (new URLSearchParams(window.location.search).has('demo')) {
     setTimeout(() => renderDemoMindmap(), 500);
   }
+  
+  // 移动端：检测屏幕宽度，自动折叠侧边栏
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebarToggleBtn').innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><polyline points="18 15 12 9 6 15"/></svg>';
+  }
+}
+
+// ==================== 侧边栏切换（移动端）====================
+function toggleSidebar() {
+  const sidebar = document.getElementById('historySection').closest('.sidebar');
+  const toggleBtn = document.getElementById('sidebarToggleBtn');
+  
+  if (!sidebar) return;
+  
+  sidebar.classList.toggle('collapsed');
+  
+  // 切换箭头方向
+  if (sidebar.classList.contains('collapsed')) {
+    toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><polyline points="18 15 12 9 6 15"/></svg>';
+  } else {
+    toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><polyline points="6 9 12 15 18 9"/></svg>';
+  }
+  
+  // 触发布局重绘
+  setTimeout(() => {
+    if (State.jm) {
+      try { State.jm.relayout(); } catch(e) {}
+    }
+  }, 300);
 }
 
 // ==================== Demo 导图（自测用）====================
@@ -1220,6 +1263,23 @@ function setupMindmapInteraction() {
     if (State.isDragging) {
       State.isDragging = false;
       document.getElementById('mindmapArea').classList.remove('dragging');
+    }
+  });
+  
+  // ==================== 双击编辑节点 ====================
+  area.addEventListener('dblclick', function(e) {
+    if (!State.jm) return;
+    
+    const jmnode = e.target.closest('jmnode');
+    if (jmnode) {
+      const nodeId = jmnode.getAttribute('nodeid');
+      if (nodeId) {
+        try {
+          State.jm.edit_node(nodeId);
+        } catch(err) {
+          console.error('双击编辑失败:', err);
+        }
+      }
     }
   });
 
