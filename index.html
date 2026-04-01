@@ -302,6 +302,33 @@
     50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
   }
   .voice-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+  
+  /* ===== 语音波形动画 ===== */
+  .voice-waveform {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    display: none; align-items: center; gap: 4px; padding: 12px 20px;
+    background: var(--bg-elevated); border: 1px solid var(--border-default);
+    border-radius: var(--radius-full); box-shadow: var(--shadow-lg); z-index: 1000;
+  }
+  .voice-waveform.active { display: flex; animation: fadeIn 0.2s ease; }
+  .voice-waveform-bar {
+    width: 4px; height: 20px; background: var(--danger); border-radius: 2px;
+    animation: wave 0.8s ease-in-out infinite;
+  }
+  .voice-waveform-bar:nth-child(1) { animation-delay: 0s; }
+  .voice-waveform-bar:nth-child(2) { animation-delay: 0.1s; }
+  .voice-waveform-bar:nth-child(3) { animation-delay: 0.2s; }
+  .voice-waveform-bar:nth-child(4) { animation-delay: 0.3s; }
+  .voice-waveform-bar:nth-child(5) { animation-delay: 0.4s; }
+  .voice-waveform-text { margin-left: 8px; font-size: 13px; color: var(--text-secondary); }
+  @keyframes wave {
+    0%, 100% { height: 8px; }
+    50% { height: 24px; }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
 
   /* ===== 右侧导图区域 ===== */
   .mindmap-area { flex: 1; position: relative; overflow: hidden; background: var(--bg-base); cursor: grab; }
@@ -1141,6 +1168,16 @@
         </button>
       </div>
     </div>
+  </div>
+
+  <!-- 语音波形动画 -->
+  <div class="voice-waveform" id="voiceWaveform">
+    <div class="voice-waveform-bar"></div>
+    <div class="voice-waveform-bar"></div>
+    <div class="voice-waveform-bar"></div>
+    <div class="voice-waveform-bar"></div>
+    <div class="voice-waveform-bar"></div>
+    <span class="voice-waveform-text">录音中...</span>
   </div>
 
   <!-- 右侧导图区域 -->
@@ -2792,13 +2829,14 @@ function generateUUID() {
 
 async function toggleVoice() {
   const btn = document.getElementById('voiceBtn');
+  const waveform = document.getElementById('voiceWaveform');
   if (State.isRecording) {
     // 停止录音
     stopASR();
     State.isRecording = false;
     btn.classList.remove('recording');
     btn.innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
-    showToast('录音已停止');
+    waveform.classList.remove('active');
     if (State.transcript.trim()) {
       document.getElementById('userInput').value = State.transcript.trim();
       sendMessage();
@@ -2817,7 +2855,7 @@ async function toggleVoice() {
       State.isRecording = true;
       btn.classList.add('recording');
       btn.innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
-      showToast('录音中，说话后点击停止...');
+      waveform.classList.add('active');
     } catch (e) {
       showToast('启动语音识别失败：' + e.message, 'error');
       console.error(e);
