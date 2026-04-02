@@ -8,10 +8,6 @@
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsmind@0.9.1/es6/jsmind.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-</style>
-<!-- 移动端增强样式 -->
-<link rel="stylesheet" href="./mobile-enhance.css">
-<style>
 
   :root {
     --bg-base: #09090b;
@@ -646,11 +642,172 @@
     .main { flex-direction: column; }
     .mindmap-area { height: 50%; }
   }
+
+  /* ===== 登录/注册界面 ===== */
+  .auth-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg-base);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-overlay.hidden { display: none; }
+
+  .auth-box {
+    width: 380px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: 36px 32px 28px;
+    box-shadow: var(--shadow-lg);
+  }
+  .auth-logo {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 28px;
+  }
+  .auth-logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), #a855f7);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .auth-logo-icon svg { width: 18px; height: 18px; }
+  .auth-logo-text { font-size: 18px; font-weight: 700; letter-spacing: -0.03em; }
+  .auth-logo-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 1px; }
+
+  .auth-tabs {
+    display: flex; border-bottom: 1px solid var(--border-subtle); margin-bottom: 24px;
+  }
+  .auth-tab {
+    flex: 1; padding: 10px; text-align: center; font-size: 13px; font-weight: 500;
+    color: var(--text-tertiary); cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: all var(--transition);
+  }
+  .auth-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .auth-tab:hover:not(.active) { color: var(--text-secondary); }
+
+  .auth-form { display: flex; flex-direction: column; gap: 14px; }
+  .auth-form-group { display: flex; flex-direction: column; gap: 5px; }
+  .auth-form-group label {
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+  }
+  .auth-input {
+    height: 38px; padding: 0 12px;
+    background: var(--bg-elevated); border: 1px solid var(--border-default);
+    border-radius: var(--radius-md); color: var(--text-primary);
+    font-size: 13px; font-family: inherit; outline: none;
+    transition: border-color var(--transition), box-shadow var(--transition);
+  }
+  .auth-input:focus {
+    border-color: var(--accent-border);
+    box-shadow: 0 0 0 3px var(--accent-subtle);
+  }
+  .auth-input::placeholder { color: var(--text-muted); }
+
+  .auth-btn {
+    height: 40px; border-radius: var(--radius-md); border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; font-family: inherit;
+    transition: all var(--transition); margin-top: 4px;
+  }
+  .auth-btn-primary {
+    background: var(--accent); color: #fff;
+  }
+  .auth-btn-primary:hover { background: var(--accent-hover); }
+  .auth-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .auth-error {
+    font-size: 12px; color: var(--danger); background: var(--danger-subtle);
+    border: 1px solid rgba(239,68,68,0.2); border-radius: var(--radius-sm);
+    padding: 8px 10px; display: none;
+  }
+  .auth-error.show { display: block; }
+
+  .auth-hint { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 4px; }
+
+  /* 顶栏用户信息 */
+  .user-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 10px; border-radius: var(--radius-md);
+    background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+    cursor: pointer; font-size: 12px; color: var(--text-secondary);
+    transition: all var(--transition);
+  }
+  .user-badge:hover { border-color: var(--border-default); color: var(--text-primary); }
+  .user-avatar {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), #a855f7);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+  .user-logout-btn {
+    font-size: 11px; color: var(--text-muted); background: none; border: none;
+    cursor: pointer; padding: 2px 6px; border-radius: var(--radius-sm);
+    transition: all var(--transition);
+  }
+  .user-logout-btn:hover { color: var(--danger); background: var(--danger-subtle); }
 </style>
 </head>
 <body>
 
-<!-- 顶部导航栏 -->
+<!-- ===== 登录/注册遮罩 ===== -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="auth-logo-text">MindFlow</div>
+        <div class="auth-logo-sub">AI 思维导图助手</div>
+      </div>
+    </div>
+
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">登录</div>
+      <div class="auth-tab" id="tabRegister" onclick="switchAuthTab('register')">注册</div>
+    </div>
+
+    <!-- 登录表单 -->
+    <div id="formLogin" class="auth-form">
+      <div class="auth-form-group">
+        <label>用户名</label>
+        <input class="auth-input" id="loginUsername" type="text" placeholder="输入用户名" autocomplete="username" />
+      </div>
+      <div class="auth-form-group">
+        <label>密码</label>
+        <input class="auth-input" id="loginPassword" type="password" placeholder="输入密码" autocomplete="current-password"
+          onkeydown="if(event.key==='Enter') doLogin()" />
+      </div>
+      <div class="auth-error" id="loginError"></div>
+      <button class="auth-btn auth-btn-primary" id="loginBtn" onclick="doLogin()">登录</button>
+      <div class="auth-hint">还没有账号？点击上方「注册」创建</div>
+    </div>
+
+    <!-- 注册表单 -->
+    <div id="formRegister" class="auth-form" style="display:none">
+      <div class="auth-form-group">
+        <label>用户名 <span style="color:var(--text-muted);font-weight:400">（3-20位字母/数字/下划线）</span></label>
+        <input class="auth-input" id="regUsername" type="text" placeholder="输入用户名" autocomplete="username" />
+      </div>
+      <div class="auth-form-group">
+        <label>密码 <span style="color:var(--text-muted);font-weight:400">（至少 6 位）</span></label>
+        <input class="auth-input" id="regPassword" type="password" placeholder="设置密码" autocomplete="new-password" />
+      </div>
+      <div class="auth-form-group">
+        <label>确认密码</label>
+        <input class="auth-input" id="regPasswordConfirm" type="password" placeholder="再次输入密码" autocomplete="new-password"
+          onkeydown="if(event.key==='Enter') doRegister()" />
+      </div>
+      <div class="auth-error" id="registerError"></div>
+      <button class="auth-btn auth-btn-primary" id="registerBtn" onclick="doRegister()">注册并登录</button>
+      <div class="auth-hint">注册后 API 配置将与账号绑定，多设备同步</div>
+    </div>
+  </div>
+</div>
+
+
 <div class="topbar">
   <div class="topbar-left">
     <div class="logo">
@@ -720,6 +877,12 @@
       </div>
     </div>
     <div class="topbar-divider"></div>
+    <!-- 用户信息 -->
+    <div class="user-badge" id="userBadge" style="display:none" title="当前登录用户">
+      <div class="user-avatar" id="userAvatar">?</div>
+      <span id="userNameDisplay">用户</span>
+      <button class="user-logout-btn" onclick="doLogout()" title="退出登录">退出</button>
+    </div>
     <button class="btn-icon" onclick="toggleSettings()" title="设置">
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
@@ -761,18 +924,8 @@
 
     <!-- 侧边栏标题 -->
     <div class="sidebar-header">
-      <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div style="flex: 1;">
-          <h3 id="modeTitle" style="margin-bottom: 2px;">会议助手</h3>
-          <p id="modeDesc" style="font-size: 11px; color: var(--text-tertiary); line-height: 1.5; margin: 0;">点击麦克风开始录音，或直接输入内容。AI 会实时生成思维导图。</p>
-        </div>
-        <!-- 移动端折叠按钮 -->
-        <button class="btn-icon" onclick="toggleSidebar()" title="收起/展开侧边栏" style="flex-shrink: 0;" id="sidebarToggleBtn">
-          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </button>
-      </div>
+      <h3 id="modeTitle">会议助手</h3>
+      <p id="modeDesc">点击麦克风开始录音，或直接输入内容。AI 会实时生成思维导图。</p>
     </div>
 
     <!-- 会议控制 -->
@@ -963,16 +1116,51 @@ const BRANCH_COLORS = [
 
 // ==================== 初始化 ====================
 function init() {
-  const savedApiKey = localStorage.getItem('mindflow_apikey');
-  const savedProxy = localStorage.getItem('mindflow_proxy');
-  const savedModel = localStorage.getItem('mindflow_model');
-  if (savedApiKey) document.getElementById('apiKey').value = savedApiKey;
-  if (savedProxy) document.getElementById('proxyUrl').value = savedProxy;
-  if (savedModel) document.getElementById('modelSelect').value = savedModel;
+  // 先检查登录状态
+  checkAuthAndInit();
+}
+
+async function checkAuthAndInit() {
+  const token = localStorage.getItem('mindflow_token');
+  if (token) {
+    // 有 token，尝试加载用户配置
+    const ok = await loadUserConfig(token);
+    if (ok) {
+      showMainApp();
+      return;
+    }
+    // token 失效，清除
+    localStorage.removeItem('mindflow_token');
+    localStorage.removeItem('mindflow_username');
+  }
+  // 显示登录界面
+  showAuthOverlay();
+}
+
+function showAuthOverlay() {
+  document.getElementById('authOverlay').classList.remove('hidden');
+}
+
+function showMainApp() {
+  document.getElementById('authOverlay').classList.add('hidden');
+
+  // 显示用户信息
+  const username = localStorage.getItem('mindflow_username') || '?';
+  document.getElementById('userBadge').style.display = 'flex';
+  document.getElementById('userNameDisplay').textContent = username;
+  document.getElementById('userAvatar').textContent = username[0].toUpperCase();
+
+  // 读取本地缓存的设置填入设置框（从账号配置同步）
+  const savedApiKey  = localStorage.getItem('mindflow_apikey');
+  const savedProxy   = localStorage.getItem('mindflow_proxy');
+  const savedModel   = localStorage.getItem('mindflow_model');
+  if (savedApiKey) document.getElementById('apiKey').value    = savedApiKey;
+  if (savedProxy)  document.getElementById('proxyUrl').value  = savedProxy;
+  if (savedModel)  document.getElementById('modelSelect').value = savedModel;
 
   renderHistoryList();
   setupMindmapInteraction();
-  
+
   document.addEventListener('click', function(e) {
     const menu = document.getElementById('exportMenu');
     if (!e.target.closest('.export-wrapper')) {
@@ -980,40 +1168,127 @@ function init() {
     }
   });
 
-  // 加载 Demo 数据测试
   if (new URLSearchParams(window.location.search).has('demo')) {
     setTimeout(() => renderDemoMindmap(), 500);
   }
-  
-  // 移动端：检测屏幕宽度，自动折叠侧边栏
-  if (window.innerWidth <= 768) {
-    document.getElementById('sidebarToggleBtn').innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><polyline points="18 15 12 9 6 15"/></svg>';
+}
+
+// ==================== 登录/注册 ====================
+
+// FC 代理地址（硬编码，用于认证 API）
+const AUTH_PROXY = 'https://mindflow-proxy-dbyxpormng.cn-hangzhou.fcapp.run';
+
+function switchAuthTab(tab) {
+  const isLogin = tab === 'login';
+  document.getElementById('tabLogin').classList.toggle('active', isLogin);
+  document.getElementById('tabRegister').classList.toggle('active', !isLogin);
+  document.getElementById('formLogin').style.display    = isLogin ? 'flex' : 'none';
+  document.getElementById('formRegister').style.display = isLogin ? 'none' : 'flex';
+  document.getElementById('loginError').classList.remove('show');
+  document.getElementById('registerError').classList.remove('show');
+}
+
+function showAuthError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.add('show');
+}
+
+async function doLogin() {
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!username || !password) { showAuthError('loginError', '用户名和密码不能为空'); return; }
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '登录中...';
+  document.getElementById('loginError').classList.remove('show');
+
+  try {
+    const res = await fetch(AUTH_PROXY + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showAuthError('loginError', data.error || '登录失败'); return; }
+
+    // 保存 token 和配置
+    localStorage.setItem('mindflow_token', data.token);
+    localStorage.setItem('mindflow_username', data.username);
+    applyConfigFromServer(data.config);
+    showMainApp();
+  } catch(e) {
+    showAuthError('loginError', '网络错误，请检查网络后重试');
+  } finally {
+    btn.disabled = false; btn.textContent = '登录';
   }
 }
 
-// ==================== 侧边栏切换（移动端）====================
-function toggleSidebar() {
-  const sidebar = document.getElementById('historySection').closest('.sidebar');
-  const toggleBtn = document.getElementById('sidebarToggleBtn');
-  
-  if (!sidebar) return;
-  
-  sidebar.classList.toggle('collapsed');
-  
-  // 切换箭头方向
-  if (sidebar.classList.contains('collapsed')) {
-    toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><polyline points="18 15 12 9 6 15"/></svg>';
-  } else {
-    toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;"><polyline points="6 9 12 15 18 9"/></svg>';
+async function doRegister() {
+  const username = document.getElementById('regUsername').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirm  = document.getElementById('regPasswordConfirm').value;
+  if (!username || !password) { showAuthError('registerError', '请填写用户名和密码'); return; }
+  if (password !== confirm) { showAuthError('registerError', '两次密码不一致'); return; }
+  if (password.length < 6) { showAuthError('registerError', '密码至少 6 位'); return; }
+
+  const btn = document.getElementById('registerBtn');
+  btn.disabled = true; btn.textContent = '注册中...';
+  document.getElementById('registerError').classList.remove('show');
+
+  try {
+    const res = await fetch(AUTH_PROXY + '/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) { showAuthError('registerError', data.error || '注册失败'); return; }
+
+    localStorage.setItem('mindflow_token', data.token);
+    localStorage.setItem('mindflow_username', data.username);
+    applyConfigFromServer(data.config);
+    showMainApp();
+    showToast('注册成功，欢迎 ' + data.username + '！', 'success');
+  } catch(e) {
+    showAuthError('registerError', '网络错误，请检查网络后重试');
+  } finally {
+    btn.disabled = false; btn.textContent = '注册并登录';
   }
-  
-  // 触发布局重绘
-  setTimeout(() => {
-    if (State.jm) {
-      try { State.jm.relayout(); } catch(e) {}
-    }
-  }, 300);
 }
+
+function doLogout() {
+  if (!confirm('确定退出登录？')) return;
+  localStorage.removeItem('mindflow_token');
+  localStorage.removeItem('mindflow_username');
+  // 不清除 API 配置缓存，下次登录后从服务端加载
+  location.reload();
+}
+
+// 从服务端配置同步到本地
+function applyConfigFromServer(config) {
+  if (!config) return;
+  if (config.apiKey)  { localStorage.setItem('mindflow_apikey', config.apiKey);   document.getElementById('apiKey').value = config.apiKey; }
+  if (config.apiBase) { localStorage.setItem('mindflow_proxy',  config.apiBase);  document.getElementById('proxyUrl').value = config.apiBase; }
+  if (config.model)   { localStorage.setItem('mindflow_model',  config.model);    document.getElementById('modelSelect').value = config.model; }
+}
+
+// 加载用户配置（返回 true/false）
+async function loadUserConfig(token) {
+  try {
+    const res = await fetch(AUTH_PROXY + '/auth/config', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) return false;
+    const data = await res.json();
+    applyConfigFromServer(data.config);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+
 
 // ==================== Demo 导图（自测用）====================
 function renderDemoMindmap() {
@@ -1263,23 +1538,6 @@ function setupMindmapInteraction() {
     if (State.isDragging) {
       State.isDragging = false;
       document.getElementById('mindmapArea').classList.remove('dragging');
-    }
-  });
-  
-  // ==================== 双击编辑节点 ====================
-  area.addEventListener('dblclick', function(e) {
-    if (!State.jm) return;
-    
-    const jmnode = e.target.closest('jmnode');
-    if (jmnode) {
-      const nodeId = jmnode.getAttribute('nodeid');
-      if (nodeId) {
-        try {
-          State.jm.edit_node(nodeId);
-        } catch(err) {
-          console.error('双击编辑失败:', err);
-        }
-      }
     }
   });
 
@@ -1832,17 +2090,38 @@ function toggleSettings() {
   modal.classList.toggle('show', !isShow);
 }
 
-function saveSettings() {
-  const apiKey = document.getElementById('apiKey').value.trim();
+async function saveSettings() {
+  const apiKey   = document.getElementById('apiKey').value.trim();
   const proxyUrl = document.getElementById('proxyUrl').value.trim();
-  const model = document.getElementById('modelSelect').value;
+  const model    = document.getElementById('modelSelect').value;
   if (!proxyUrl) { showToast('请填入 API 代理地址', 'error'); return; }
+
+  // 保存到本地
   localStorage.setItem('mindflow_apikey', apiKey);
-  localStorage.setItem('mindflow_proxy', proxyUrl);
-  localStorage.setItem('mindflow_model', model);
+  localStorage.setItem('mindflow_proxy',  proxyUrl);
+  localStorage.setItem('mindflow_model',  model);
+
+  // 同步到服务端（如果已登录）
+  const token = localStorage.getItem('mindflow_token');
+  if (token) {
+    try {
+      const res = await fetch(AUTH_PROXY + '/auth/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ apiKey, apiBase: proxyUrl, model }),
+      });
+      if (res.ok) {
+        toggleSettings();
+        showToast('设置已保存并同步到云端', 'success');
+        return;
+      }
+    } catch(e) { /* 忽略网络错误，仍然保存本地 */ }
+  }
+
   toggleSettings();
   showToast('设置已保存', 'success');
 }
+
 
 // ==================== 模式切换 ====================
 function switchMode(mode, el, noReset) {
@@ -2159,10 +2438,15 @@ async function callAI(systemPrompt, userMessage, temperature) {
 
   const loadingMsg = addMessage('ai', '<div class="loading-dots"><span></span><span></span><span></span></div> AI 思考中...');
 
+
   try {
+    const token = localStorage.getItem('mindflow_token');
+    const authHeaders = { 'Content-Type': 'application/json' };
+    if (token) authHeaders['Authorization'] = 'Bearer ' + token;
+
     const response = await fetch(cleanUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: authHeaders,
       body: JSON.stringify({ model, messages, temperature }),
     });
 
