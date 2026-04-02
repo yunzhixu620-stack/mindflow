@@ -2388,50 +2388,59 @@ function convertToMarkdown(node, depth) {
 function exportToPng() {
   showToast('正在生成图片...');
   try {
-    // 优先使用 dom-to-image（比 html2canvas 更可靠）
-    if (!window.domtoimage) {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/dom-to-image@2.6.0/dist/dom-to-image.min.js';
-      script.onload = () => doDomToImagePng();
-      script.onerror = () => {
-        showToast('导出库加载失败，尝试其他方案...', 'error');
-        setTimeout(() => fallbackHtml2CanvasPng(), 500);
-      };
-      document.head.appendChild(script);
+    // 使用 jsMind 原生 canvas 导出（最可靠，捕获完整导图）
+    const dataUrl = exportMindmapToPng();
+    if (dataUrl) {
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'mindflow_' + getDateStr() + '.png';
+      a.click();
+      showToast('已导出 PNG 图片');
     } else {
-      doDomToImagePng();
+      showToast('导出失败，请确保思维导图已生成', 'error');
     }
   } catch(e) { 
     console.error('PNG export error:', e);
-    fallbackHtml2CanvasPng();
+    showToast('图片导出失败', 'error');
   }
 }
 
-function doDomToImagePng() {
+// 使用 jsMind canvas 直接导出完整导图
+function exportMindmapToPng() {
   const container = document.getElementById('jsmind_container');
-  if (!container) {
-    showToast('当前无法获取思维导图', 'error');
-    return;
-  }
+  if (!container) return null;
   
-  domtoimage.toPng(container, {
-    bgcolor: '#09090b',
-    scale: 2,
-    style: {
-      margin: 0,
-      padding: 0
+  // 获取所有 canvas
+  const canvases = container.querySelectorAll('canvas');
+  if (canvases.length === 0) return null;
+  
+  // 找到包含完整导图的最大 canvas
+  let mainCanvas = null;
+  let maxArea = 0;
+  canvases.forEach(c => {
+    const area = c.width * c.height;
+    if (area > maxArea) {
+      maxArea = area;
+      mainCanvas = c;
     }
-  }).then(dataUrl => {
-    const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = 'mindflow_' + getDateStr() + '.png';
-    a.click();
-    showToast('已导出 PNG 图片');
-  }).catch(e => {
-    console.error('dom-to-image error:', e);
-    showToast('导出失败，尝试其他方案...', 'error');
-    setTimeout(() => fallbackHtml2CanvasPng(), 500);
   });
+  
+  if (!mainCanvas) return null;
+  
+  // 创建新 canvas，添加背景色
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = mainCanvas.width;
+  exportCanvas.height = mainCanvas.height;
+  const ctx = exportCanvas.getContext('2d');
+  
+  // 填充深色背景
+  ctx.fillStyle = '#09090b';
+  ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+  
+  // 绘制原 canvas 内容
+  ctx.drawImage(mainCanvas, 0, 0);
+  
+  return exportCanvas.toDataURL('image/png');
 }
 
 function fallbackHtml2CanvasPng() {
@@ -2547,30 +2556,15 @@ async function exportToPdf() {
     }
 
     const { jsPDF } = window.jspdf;
-    const container = document.getElementById('jsmind_container');
-    if (!container) {
+    
+    // 使用 canvas 直接获取导图数据
+    const imgData = exportMindmapToPng();
+    if (!imgData) {
       showToast('当前无法获取思维导图，请先生成内容', 'error');
       return;
     }
     
-    // 优先使用 dom-to-image
-    if (!window.domtoimage) {
-      const script2 = document.createElement('script');
-      script2.src = 'https://cdn.jsdelivr.net/npm/dom-to-image@2.6.0/dist/dom-to-image.min.js';
-      document.head.appendChild(script2);
-      await new Promise((resolve, reject) => {
-        script2.onload = resolve;
-        script2.onerror = () => reject(new Error('dom-to-image 加载失败'));
-      });
-    }
-    
-    // dom-to-image 直接返回 dataUrl，需要获取图像尺寸
-    const imgData = await domtoimage.toPng(container, {
-      bgcolor: '#09090b',
-      scale: 2
-    });
-    
-    // 从 dataUrl 创建 Image 来获取尺寸
+    // 从 dataUrl 获取图像尺寸
     const img = new Image();
     await new Promise((resolve, reject) => {
       img.onload = resolve;
