@@ -2387,24 +2387,8 @@ function convertToMarkdown(node, depth) {
 
 function exportToPng() {
   showToast('正在生成图片...');
-  try {
-    // 获取所有 canvas 层并合并
-    const mergedCanvas = getMergedCanvas();
-    if (mergedCanvas) {
-      const url = mergedCanvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'mindflow_' + getDateStr() + '.png';
-      a.click();
-      showToast('已导出 PNG 图片');
-    } else {
-      // 降级方案：使用 html2canvas
-      fallbackHtml2CanvasPng();
-    }
-  } catch(e) { 
-    console.error('PNG export error:', e);
-    fallbackHtml2CanvasPng();
-  }
+  // 优先使用 html2canvas 方案
+  fallbackHtml2CanvasPng();
 }
 
 // 获取并合并 jsMind 的所有 canvas 层
@@ -2466,16 +2450,20 @@ function fallbackHtml2CanvasPng() {
 }
 
 function doHtml2CanvasPng() {
-  const container = document.getElementById('jsmind_container');
+  // 捕获 jsmind-inner（实际渲染区域）而不是整个 container
+  const inner = document.querySelector('.jsmind-inner');
+  const container = inner || document.getElementById('jsmind_container');
   if (!container) {
     showToast('当前无法获取思维导图', 'error');
     return;
   }
+  
   html2canvas(container, {
     backgroundColor: '#09090b',
     scale: 2,
     useCORS: true,
-    logging: false
+    logging: false,
+    allowTaint: true
   }).then(canvas => {
     const url = canvas.toDataURL('image/png');
     const a = document.createElement('a');
@@ -2539,7 +2527,8 @@ async function exportToPdf() {
           script2.onerror = () => reject(new Error('html2canvas 加载失败'));
         });
       }
-      const container = document.getElementById('jsmind_container');
+      // 优先捕获 jsmind-inner（实际渲染区域）
+      const container = document.querySelector('.jsmind-inner') || document.getElementById('jsmind_container');
       if (!container) {
         showToast('当前无法获取思维导图，请先生成内容', 'error');
         return;
@@ -2548,6 +2537,7 @@ async function exportToPdf() {
         backgroundColor: '#09090b',
         scale: 2,
         useCORS: true,
+        allowTaint: true,
         logging: false
       });
     }
