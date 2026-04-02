@@ -2624,19 +2624,19 @@ function setMeetingType(type, el) {
 }
 
 async function generateMeetingFramework(goal) {
-  const systemPrompt = `【发散讨论框架】你是资深战略顾问和头脑风暴引导者。
+  const systemPrompt = `你是资深战略顾问，擅长将会议目标拆解为结构化的思考框架。
 
-将会议目标拆解为多维度的思考框架，帮助团队全面探索问题。
-
-输出格式（严格 JSON）：
-{"topic":"会议目标主题","children":[{"topic":"🎯 核心问题","children":[{"topic":"需要解决的根本问题"}]},{"topic":"🔄 现有方案","children":[{"topic":"当前已有的解决思路"}]},{"topic":"💡 可能方向","children":[{"topic":"新思路/新角度/创新方案"}]},{"topic":"⚠️ 风险挑战","children":[{"topic":"潜在障碍和困难"}]},{"topic":"📋 下一步","children":[{"topic":"需要深入讨论的具体议题"}]}]}
+生成思维导图 JSON，格式：
+{"topic":"主题","children":[{"topic":"维度1","children":[{"topic":"核心洞察"}]}]}
 
 严格规则：
-• 根据目标复杂度决定分支数量，通常 4-8 个一级分支，每分支 1-4 个子节点
-• 节点必须是「观点」或「判断」，不罗列数据和原始信息
-• 一级分支必须加 emoji 前缀
-• 根据内容复杂度决定层级，通常 3-4 层，可用 5 层
-• 只输出 JSON`;
+1. 只生成 3-5 个一级分支（维度），每个分支 1-3 个子节点
+2. 节点内容必须是「观点」或「判断」，不是数据罗列
+3. 不要罗列数字、人名、日期等原始数据
+4. 用简洁有力的短语表达核心洞察（如「下沉市场是增长突破口」而非「三线城市用户占比53.6%」）
+5. 一级分支加 emoji 前缀
+6. 最多 3 层，不要更深
+7. 只输出 JSON`;
   addMessage('ai', '<div class="loading-dots"><span></span><span></span><span></span></div> 正在生成框架...');
   const result = await callAI(systemPrompt, '会议目标：' + goal);
   if (result) {
@@ -3005,11 +3005,11 @@ async function processMeetingInput(text) {
 {"topic":"会议核心主题","children":[{"topic":"📌 决策结论","children":[{"topic":"具体决策内容（who/what/when）"}]},{"topic":"🎯 行动项","children":[{"topic":"行动描述 · @负责人 · ⏰ 截止时间"}]},{"topic":"❓ 待跟进问题","children":[{"topic":"悬而未决的争议点"}]}]}
 
 严格规则：
-• 根据内容量自行决定分支数量，通常 3-8 个一级分支，每分支 1-5 个子节点
+• 生成 3-5 个核心维度的一级分支，每分支 1-4 个子节点，根据内容量自行判断
 • 每个节点必须是「结论」「判断」或「行动说明」，不罗列原始数据和原话
 • 用第三人称总结性语言（如「决定XX方案」而非「讨论了XX方案」）
 • 一级分支必须加 emoji 前缀
-• 根据内容复杂度决定层级深度，通常 3-4 层，内容丰富可用 5 层
+• 最多 3 层，不要更深
 • 只输出 JSON，不要任何解释`;
     const result = await callAI(sp, '会议内容：\n' + text);
     if (result) {
@@ -3026,7 +3026,7 @@ async function processMeetingInput(text) {
 整合规则：
 1. 新信息提炼为「决策」「行动」或「问题」，合并到最相关的现有节点
 2. 如有全新的独立议题，创建新的一级分支（保持 emoji 风格一致）
-3. 根据内容复杂度决定层级，必要时可用 4-5 层
+3. 不增加超过 3 层的深度
 4. 只输出完整 JSON`;
     const result = await callAI(sp, '新增会议内容：\n' + text);
     if (result) {
@@ -3055,11 +3055,11 @@ async function processKnowledgeInput(text) {
 {"topic":"知识核心主题","children":[{"topic":"🧠 核心概念","children":[{"topic":"简洁定义（1句话）"}]},{"topic":"⚙️ 底层原理","children":[{"topic":"为什么成立，原因机制"}]},{"topic":"🛠️ 实践应用","children":[{"topic":"如何使用，何时适用"}]},{"topic":"🔗 关联延伸","children":[{"topic":"相关/对立概念"}]}]}
 
 严格规则：
-• 根据内容量自行决定分支数量，通常 3-8 个一级分支，每分支 1-5 个子节点
+• 生成 3-6 个维度的一级分支，每分支 1-4 个子节点，根据内容量自行判断
 • 提炼「深层原因」而非「表面现象」（如「稀缺性导致禀赋效应」而非「人们珍惜自己的东西」）
-• 用精炼语言表达，但可根据需要适当扩展
+• 用精炼短句，每个节点不超过 20 个字
 • 一级分支必须加 emoji 前缀
-• 根据内容复杂度决定层级深度，通常 3-4 层，内容丰富可用 5 层
+• 最多 3 层，不要更深
 • 只输出 JSON`;
     const result = await callAI(sp, '知识碎片：\n' + text);
     if (result) {
@@ -3076,7 +3076,7 @@ async function processKnowledgeInput(text) {
 整合规则：
 1. 新知识归类到最相关的现有分支，或创建新的独立主题
 2. 保持「原理/应用」维度的一致性
-3. 根据内容复杂度决定层级，必要时可用 4-5 层
+3. 不增加超过 3 层的深度
 4. 保持原有 emoji 风格
 5. 只输出完整 JSON`;
     const result = await callAI(sp, '新知识：\n' + text);
@@ -3108,11 +3108,11 @@ async function processArticleInput(text) {
 {"topic":"文章标题/主题","children":[{"topic":"💡 核心论点","children":[{"topic":"作者最核心的观点（用自己的话提炼）"}]},{"topic":"📊 支撑论据","children":[{"topic":"关键证据和数据"}]},{"topic":"🔍 论证逻辑","children":[{"topic":"论证的结构和推导过程"}]},{"topic":"⚠️ 批判思考","children":[{"topic":"局限性/对立观点/延伸问题"}]}]}
 
 严格规则：
-• 根据内容量自行决定分支数量，通常 3-8 个一级分支，每分支 1-5 个子节点
+• 生成 3-5 个维度的一级分支，每分支 1-4 个子节点，根据内容量自行判断
 • 用自己的话提炼论点，不照搬原文（区分「作者说」和「你提炼」）
 • 把原文案例抽象为判断句（如「监管缺位加剧了平台垄断」而非「文中举了某平台的例子」）
 • 一级分支必须加 emoji 前缀
-• 根据内容复杂度决定层级深度，通常 3-4 层，内容丰富可用 5 层
+• 最多 3 层，不要更深
 • 只输出 JSON`;
   const result = await callAI(sp, '文章内容：\n\n' + text);
   if (result) {
