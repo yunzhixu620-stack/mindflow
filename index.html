@@ -2387,54 +2387,53 @@ function convertToMarkdown(node, depth) {
 
 function exportToPng() {
   showToast('正在生成图片...');
-  // 优先使用 html2canvas 方案
-  fallbackHtml2CanvasPng();
-}
-
-// 获取并合并 jsMind 的所有 canvas 层
-function getMergedCanvas() {
-  const container = document.getElementById('jsmind_container');
-  if (!container) return null;
-  
-  const canvases = container.querySelectorAll('canvas');
-  if (canvases.length === 0) return null;
-  
-  // 找到最大的 canvas（通常包含完整导图）
-  let mainCanvas = canvases[0];
-  let maxSize = 0;
-  canvases.forEach(c => {
-    const size = c.width * c.height;
-    if (size > maxSize) {
-      maxSize = size;
-      mainCanvas = c;
+  try {
+    // 优先使用 dom-to-image（比 html2canvas 更可靠）
+    if (!window.domtoimage) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/dom-to-image@2.6.0/dist/dom-to-image.min.js';
+      script.onload = () => doDomToImagePng();
+      script.onerror = () => {
+        showToast('导出库加载失败，尝试其他方案...', 'error');
+        setTimeout(() => fallbackHtml2CanvasPng(), 500);
+      };
+      document.head.appendChild(script);
+    } else {
+      doDomToImagePng();
     }
-  });
-  
-  // 使用实际 canvas 尺寸
-  const width = mainCanvas.width;
-  const height = mainCanvas.height;
-  if (width <= 0 || height <= 0) return null;
-  
-  // 创建合并画布
-  const merged = document.createElement('canvas');
-  merged.width = width;
-  merged.height = height;
-  const ctx = merged.getContext('2d');
-  
-  // 填充背景
-  ctx.fillStyle = '#09090b';
-  ctx.fillRect(0, 0, width, height);
-  
-  // 按顺序绘制所有 canvas 层
-  canvases.forEach(c => {
-    // 使用目标尺寸绘制，确保覆盖整个区域
-    ctx.drawImage(c, 0, 0, width, height);
-  });
-  
-  return merged;
+  } catch(e) { 
+    console.error('PNG export error:', e);
+    fallbackHtml2CanvasPng();
+  }
 }
 
-// html2canvas 降级方案
+function doDomToImagePng() {
+  const container = document.getElementById('jsmind_container');
+  if (!container) {
+    showToast('当前无法获取思维导图', 'error');
+    return;
+  }
+  
+  domtoimage.toPng(container, {
+    bgcolor: '#09090b',
+    scale: 2,
+    style: {
+      margin: 0,
+      padding: 0
+    }
+  }).then(dataUrl => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = 'mindflow_' + getDateStr() + '.png';
+    a.click();
+    showToast('已导出 PNG 图片');
+  }).catch(e => {
+    console.error('dom-to-image error:', e);
+    showToast('导出失败，尝试其他方案...', 'error');
+    setTimeout(() => fallbackHtml2CanvasPng(), 500);
+  });
+}
+
 function fallbackHtml2CanvasPng() {
   if (!window.html2canvas) {
     const script = document.createElement('script');
@@ -2450,9 +2449,7 @@ function fallbackHtml2CanvasPng() {
 }
 
 function doHtml2CanvasPng() {
-  // 捕获 jsmind-inner（实际渲染区域）而不是整个 container
-  const inner = document.querySelector('.jsmind-inner');
-  const container = inner || document.getElementById('jsmind_container');
+  const container = document.getElementById('jsmind_container');
   if (!container) {
     showToast('当前无法获取思维导图', 'error');
     return;
@@ -2475,6 +2472,44 @@ function doHtml2CanvasPng() {
     console.error('html2canvas error:', e);
     showToast('图片导出失败', 'error');
   });
+}
+
+// 获取并合并 jsMind 的所有 canvas 层（备用方案）
+function getMergedCanvas() {
+  const container = document.getElementById('jsmind_container');
+  if (!container) return null;
+  
+  const canvases = container.querySelectorAll('canvas');
+  if (canvases.length === 0) return null;
+  
+  // 找到最大的 canvas
+  let mainCanvas = canvases[0];
+  let maxSize = 0;
+  canvases.forEach(c => {
+    const size = c.width * c.height;
+    if (size > maxSize) {
+      maxSize = size;
+      mainCanvas = c;
+    }
+  });
+  
+  const width = mainCanvas.width;
+  const height = mainCanvas.height;
+  if (width <= 0 || height <= 0) return null;
+  
+  const merged = document.createElement('canvas');
+  merged.width = width;
+  merged.height = height;
+  const ctx = merged.getContext('2d');
+  
+  ctx.fillStyle = '#09090b';
+  ctx.fillRect(0, 0, width, height);
+  
+  canvases.forEach(c => {
+    ctx.drawImage(c, 0, 0, width, height);
+  });
+  
+  return merged;
 }
 
 function fallbackPngExport() {
@@ -2512,39 +2547,38 @@ async function exportToPdf() {
     }
 
     const { jsPDF } = window.jspdf;
+    const container = document.getElementById('jsmind_container');
+    if (!container) {
+      showToast('当前无法获取思维导图，请先生成内容', 'error');
+      return;
+    }
     
-    // 优先尝试获取合并的 canvas
-    let canvas = getMergedCanvas();
-    
-    // 如果失败，降级使用 html2canvas
-    if (!canvas) {
-      if (!window.html2canvas) {
-        const script2 = document.createElement('script');
-        script2.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-        document.head.appendChild(script2);
-        await new Promise((resolve, reject) => {
-          script2.onload = resolve;
-          script2.onerror = () => reject(new Error('html2canvas 加载失败'));
-        });
-      }
-      // 优先捕获 jsmind-inner（实际渲染区域）
-      const container = document.querySelector('.jsmind-inner') || document.getElementById('jsmind_container');
-      if (!container) {
-        showToast('当前无法获取思维导图，请先生成内容', 'error');
-        return;
-      }
-      canvas = await html2canvas(container, {
-        backgroundColor: '#09090b',
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false
+    // 优先使用 dom-to-image
+    if (!window.domtoimage) {
+      const script2 = document.createElement('script');
+      script2.src = 'https://cdn.jsdelivr.net/npm/dom-to-image@2.6.0/dist/dom-to-image.min.js';
+      document.head.appendChild(script2);
+      await new Promise((resolve, reject) => {
+        script2.onload = resolve;
+        script2.onerror = () => reject(new Error('dom-to-image 加载失败'));
       });
     }
-
-    const imgData = canvas.toDataURL('image/png');
-    const imgW = canvas.width;
-    const imgH = canvas.height;
+    
+    // dom-to-image 直接返回 dataUrl，需要获取图像尺寸
+    const imgData = await domtoimage.toPng(container, {
+      bgcolor: '#09090b',
+      scale: 2
+    });
+    
+    // 从 dataUrl 创建 Image 来获取尺寸
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = imgData;
+    });
+    const imgW = img.width;
+    const imgH = img.height;
 
     // 计算 PDF 尺寸（保持比例，A4 竖向，最大宽度 170mm）
     const a4W = 210;
