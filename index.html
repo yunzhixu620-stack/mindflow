@@ -552,6 +552,30 @@
     margin: 4px 0;
   }
 
+  /* ---- 节点悬停提示（Tooltip） ---- */
+  .node-tooltip {
+    position: fixed;
+    z-index: 10000;
+    max-width: 320px;
+    padding: 10px 14px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    color: var(--text-primary);
+    font-size: 13px;
+    line-height: 1.5;
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.15s, transform 0.15s;
+    word-break: break-word;
+  }
+  .node-tooltip.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
   /* ---- 根节点 ---- */
   jmnode.root {
     background: linear-gradient(135deg, var(--accent), #a855f7) !important;
@@ -1155,6 +1179,9 @@
       <canvas id="minimapCanvas"></canvas>
       <div class="minimap-viewport" id="minimapViewport"></div>
     </div>
+
+    <!-- 节点悬停提示 -->
+    <div class="node-tooltip" id="nodeTooltip"></div>
 
     <!-- 缩放控件 -->
     <div class="zoom-controls" id="zoomControls" style="display:none">
@@ -2361,20 +2388,40 @@ function convertToMarkdown(node, depth) {
 function exportToPng() {
   showToast('正在生成图片...');
   try {
-    const canvas = document.querySelector('#jsmind_container canvas');
+    // jsMind 可能生成多个 canvas，获取最后一个（通常是节点层）
+    const canvases = document.querySelectorAll('#jsmind_container canvas');
+    const canvas = canvases[canvases.length - 1]; // 取最后一个 canvas
+    
     if (canvas) {
-      canvas.toBlob(function(blob) {
-        if (!blob) { fallbackPngExport(); return; }
-        const url = URL.createObjectURL(blob);
+      // 优先用 toBlob，失败则用 toDataURL
+      const tryExport = () => {
+        const dataUrl = canvas.toDataURL('image/png');
         const a = document.createElement('a');
-        a.href = url; a.download = 'mindflow_' + getDateStr() + '.png';
-        a.click(); URL.revokeObjectURL(url);
+        a.href = dataUrl;
+        a.download = 'mindflow_' + getDateStr() + '.png';
+        a.click();
         showToast('已导出 PNG 图片');
-      });
+      };
+      
+      if (canvas.toBlob) {
+        canvas.toBlob(function(blob) {
+          if (!blob) { tryExport(); return; }
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'mindflow_' + getDateStr() + '.png';
+          a.click(); URL.revokeObjectURL(url);
+          showToast('已导出 PNG 图片');
+        }, 'image/png');
+      } else {
+        tryExport();
+      }
     } else {
       fallbackPngExport();
     }
-  } catch(e) { fallbackPngExport(); }
+  } catch(e) { 
+    console.error('PNG export error:', e);
+    fallbackPngExport(); 
+  }
 }
 
 function fallbackPngExport() {
@@ -2404,7 +2451,7 @@ async function exportToPdf() {
     if (!window.jspdf) {
       await new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2/dist/jspdf.umd.min.js';
+        script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
         script.onload = resolve;
         script.onerror = () => reject(new Error('jsPDF 加载失败'));
         document.head.appendChild(script);
@@ -2412,13 +2459,15 @@ async function exportToPdf() {
     }
     const { jsPDF } = window.jspdf;
 
-    // 获取 jsMind canvas
-    const canvas = document.querySelector('#jsmind_container canvas');
+    // 获取 jsMind canvas（取最后一个，通常是节点层）
+    const canvases = document.querySelectorAll('#jsmind_container canvas');
+    const canvas = canvases[canvases.length - 1];
     if (!canvas) {
       showToast('当前无法获取思维导图，请先生成内容', 'error');
       return;
     }
 
+    // 使用 toDataURL 确保兼容性
     const imgData = canvas.toDataURL('image/png');
     const imgW = canvas.width;
     const imgH = canvas.height;
@@ -2429,13 +2478,19 @@ async function exportToPdf() {
     const margin = 15;
     const maxW = a4W - margin * 2;
     const ratio = imgH / imgW;
-    const pdfW = Math.min(maxW, a4W - margin * 2);
+    const pdfW = maxW;
     const pdfH = pdfW * ratio;
 
-    const doc = new jsPDF({ orientation: pdfH > a4H ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+    // 根据内容比例选择方向
+    const availH = a4H - margin - 30; // 留出标题和页脚空间
+    const orientation = (pdfH > availH) ? 'landscape' : 'portrait';
+    const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
 
     // 添加标题
     const rootTopic = State.mindmapData?.topic || 'MindFlow 思维导图';
+    const pageW = orientation === 'portrait' ? a4W : a4H;
+    const pageH = orientation === 'portrait' ? a4H : a4W;
+    
     doc.setFontSize(14);
     doc.setTextColor(99, 102, 241);
     doc.text('MindFlow', margin, margin + 4);
@@ -2443,24 +2498,25 @@ async function exportToPdf() {
     doc.setTextColor(120, 120, 120);
     doc.text(rootTopic, margin, margin + 9);
     doc.setDrawColor(240, 240, 240);
-    doc.line(margin, margin + 11, a4W - margin, margin + 11);
+    doc.line(margin, margin + 11, pageW - margin, margin + 11);
 
-    // 添加思维导图图片
+    // 添加思维导图图片（居中）
     const imgTop = margin + 14;
-    const availH = a4H - imgTop - margin;
-    const finalW = Math.min(pdfW, (availH / ratio));
+    const availContentH = pageH - imgTop - margin;
+    const finalW = Math.min(pdfW, (availContentH / ratio));
     const finalH = finalW * ratio;
-    doc.addImage(imgData, 'PNG', margin, imgTop, finalW, finalH);
+    const imgLeft = (pageW - finalW) / 2;
+    doc.addImage(imgData, 'PNG', imgLeft, imgTop, finalW, finalH);
 
     // 添加页脚
     doc.setFontSize(8);
     doc.setTextColor(180, 180, 180);
-    doc.text('由 MindFlow 生成 · ' + getDateStr(), margin, a4H - margin / 2);
+    doc.text('由 MindFlow 生成 · ' + getDateStr(), margin, pageH - margin / 2);
 
     doc.save('mindflow_' + getDateStr() + '.pdf');
     showToast('已导出 PDF 文件');
   } catch(e) {
-    console.error(e);
+    console.error('PDF export error:', e);
     showToast('PDF 导出失败：' + e.message, 'error');
   }
 }
@@ -3275,6 +3331,9 @@ function renderMindmap(data) {
   // 渲染后给节点应用分支颜色的连线
   setTimeout(() => applyBranchLineColors(), 100);
 
+  // 初始化节点 Tooltip
+  setTimeout(() => initNodeTooltips(), 150);
+
   // 更新小地图
   scheduleMinimapUpdate();
 
@@ -3313,6 +3372,95 @@ function centerMindmap() {
   }
 
   document.getElementById('zoomLevel').textContent = '100%';
+}
+
+// ==================== 节点悬停提示（Tooltip） ====================
+let tooltipTimeout = null;
+
+function initNodeTooltips() {
+  const container = document.getElementById('jsmind_container');
+  const tooltip = document.getElementById('nodeTooltip');
+  if (!container || !tooltip) return;
+
+  // 移除旧的事件监听（防止重复绑定）
+  container.removeEventListener('mouseenter', onNodeMouseEnter);
+  container.removeEventListener('mouseleave', onNodeMouseLeave);
+
+  // 添加新的事件监听
+  container.addEventListener('mouseenter', onNodeMouseEnter, true);
+  container.addEventListener('mouseleave', onNodeMouseLeave, true);
+}
+
+function onNodeMouseEnter(e) {
+  const node = e.target.closest('jmnode');
+  if (!node) return;
+
+  // 延迟显示，避免鼠标快速划过时闪烁
+  clearTimeout(tooltipTimeout);
+  tooltipTimeout = setTimeout(() => {
+    showNodeTooltip(node);
+  }, 300);
+}
+
+function onNodeMouseLeave(e) {
+  clearTimeout(tooltipTimeout);
+  hideNodeTooltip();
+}
+
+function showNodeTooltip(node) {
+  const tooltip = document.getElementById('nodeTooltip');
+  if (!tooltip) return;
+
+  // 获取节点文字（兼容不同 DOM 结构）
+  let text = node.textContent || node.innerText;
+  // 如果获取到的文字太短，可能是 shadow DOM，尝试获取内部元素的文字
+  if (!text || text.length < 5) {
+    const innerSpan = node.querySelector('.jnodetext, span, div');
+    if (innerSpan) text = innerSpan.textContent || innerSpan.innerText;
+  }
+  
+  if (!text || text.trim().length < 20) return; // 文字较短时不显示 tooltip
+
+  tooltip.textContent = text.trim();
+  tooltip.classList.add('show');
+
+  // 定位 tooltip
+  positionTooltip(node, tooltip);
+}
+
+function hideNodeTooltip() {
+  const tooltip = document.getElementById('nodeTooltip');
+  if (tooltip) tooltip.classList.remove('show');
+}
+
+function positionTooltip(node, tooltip) {
+  const rect = node.getBoundingClientRect();
+  const tooltipRect = tooltip.getBoundingClientRect();
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+
+  let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+  let top = rect.bottom + 8; // 在节点下方显示
+
+  // 边界检测：右边界
+  if (left + tooltipRect.width > viewportW - 10) {
+    left = viewportW - tooltipRect.width - 10;
+  }
+  // 边界检测：左边界
+  if (left < 10) {
+    left = 10;
+  }
+  // 边界检测：下边界（如果下方空间不够，显示在节点上方）
+  if (top + tooltipRect.height > viewportH - 10) {
+    top = rect.top - tooltipRect.height - 8;
+  }
+  // 上边界检测
+  if (top < 10) {
+    top = 10;
+  }
+
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = top + 'px';
 }
 
 // 给不同分支的连线着色（通过 canvas 绘制后处理）
