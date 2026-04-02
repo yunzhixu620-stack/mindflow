@@ -2415,17 +2415,20 @@ function getMergedCanvas() {
   const canvases = container.querySelectorAll('canvas');
   if (canvases.length === 0) return null;
   
-  // 获取画布边界
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  // 找到最大的 canvas（通常包含完整导图）
+  let mainCanvas = canvases[0];
+  let maxSize = 0;
   canvases.forEach(c => {
-    minX = Math.min(minX, 0);
-    minY = Math.min(minY, 0);
-    maxX = Math.max(maxX, c.width);
-    maxY = Math.max(maxY, c.height);
+    const size = c.width * c.height;
+    if (size > maxSize) {
+      maxSize = size;
+      mainCanvas = c;
+    }
   });
   
-  const width = maxX;
-  const height = maxY;
+  // 使用实际 canvas 尺寸
+  const width = mainCanvas.width;
+  const height = mainCanvas.height;
   if (width <= 0 || height <= 0) return null;
   
   // 创建合并画布
@@ -2440,7 +2443,8 @@ function getMergedCanvas() {
   
   // 按顺序绘制所有 canvas 层
   canvases.forEach(c => {
-    ctx.drawImage(c, 0, 0);
+    // 使用目标尺寸绘制，确保覆盖整个区域
+    ctx.drawImage(c, 0, 0, width, height);
   });
   
   return merged;
