@@ -13,7 +13,7 @@
     "createdAt": "2026-04-02T07:58:46.872Z",
     "config": {
       "apiKey": "",
-      "apiBase": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "apiBase": "https://mindflow-proxy-dbyxpormng.cn-hangzhou.fcapp.run",
       "model": "qwen-turbo"
     }
   }
