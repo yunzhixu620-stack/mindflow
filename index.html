@@ -2388,34 +2388,88 @@ function convertToMarkdown(node, depth) {
 function exportToPng() {
   showToast('正在生成图片...');
   try {
-    // 动态加载 html2canvas
-    if (!window.html2canvas) {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-      script.onload = () => doExportPng();
-      script.onerror = () => {
-        showToast('图片导出库加载失败', 'error');
-      };
-      document.head.appendChild(script);
+    // 获取所有 canvas 层并合并
+    const mergedCanvas = getMergedCanvas();
+    if (mergedCanvas) {
+      const url = mergedCanvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'mindflow_' + getDateStr() + '.png';
+      a.click();
+      showToast('已导出 PNG 图片');
     } else {
-      doExportPng();
+      // 降级方案：使用 html2canvas
+      fallbackHtml2CanvasPng();
     }
   } catch(e) { 
     console.error('PNG export error:', e);
-    showToast('图片导出失败', 'error');
+    fallbackHtml2CanvasPng();
   }
 }
 
-function doExportPng() {
+// 获取并合并 jsMind 的所有 canvas 层
+function getMergedCanvas() {
+  const container = document.getElementById('jsmind_container');
+  if (!container) return null;
+  
+  const canvases = container.querySelectorAll('canvas');
+  if (canvases.length === 0) return null;
+  
+  // 获取画布边界
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  canvases.forEach(c => {
+    minX = Math.min(minX, 0);
+    minY = Math.min(minY, 0);
+    maxX = Math.max(maxX, c.width);
+    maxY = Math.max(maxY, c.height);
+  });
+  
+  const width = maxX;
+  const height = maxY;
+  if (width <= 0 || height <= 0) return null;
+  
+  // 创建合并画布
+  const merged = document.createElement('canvas');
+  merged.width = width;
+  merged.height = height;
+  const ctx = merged.getContext('2d');
+  
+  // 填充背景
+  ctx.fillStyle = '#09090b';
+  ctx.fillRect(0, 0, width, height);
+  
+  // 按顺序绘制所有 canvas 层
+  canvases.forEach(c => {
+    ctx.drawImage(c, 0, 0);
+  });
+  
+  return merged;
+}
+
+// html2canvas 降级方案
+function fallbackHtml2CanvasPng() {
+  if (!window.html2canvas) {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+    script.onload = () => doHtml2CanvasPng();
+    script.onerror = () => {
+      showToast('导出库加载失败，请刷新重试', 'error');
+    };
+    document.head.appendChild(script);
+  } else {
+    doHtml2CanvasPng();
+  }
+}
+
+function doHtml2CanvasPng() {
   const container = document.getElementById('jsmind_container');
   if (!container) {
     showToast('当前无法获取思维导图', 'error');
     return;
   }
-
   html2canvas(container, {
     backgroundColor: '#09090b',
-    scale: 2, // 高清导出
+    scale: 2,
     useCORS: true,
     logging: false
   }).then(canvas => {
@@ -2454,7 +2508,7 @@ function downloadText(content, filename, mime) {
 async function exportToPdf() {
   showToast('正在生成 PDF...');
   try {
-    // 动态加载 jsPDF 和 html2canvas
+    // 动态加载 jsPDF
     if (!window.jspdf) {
       const script1 = document.createElement('script');
       script1.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
@@ -2464,30 +2518,35 @@ async function exportToPdf() {
         script1.onerror = () => reject(new Error('jsPDF 加载失败'));
       });
     }
-    if (!window.html2canvas) {
-      const script2 = document.createElement('script');
-      script2.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-      document.head.appendChild(script2);
-      await new Promise((resolve, reject) => {
-        script2.onload = resolve;
-        script2.onerror = () => reject(new Error('html2canvas 加载失败'));
-      });
-    }
 
     const { jsPDF } = window.jspdf;
-    const container = document.getElementById('jsmind_container');
-    if (!container) {
-      showToast('当前无法获取思维导图，请先生成内容', 'error');
-      return;
+    
+    // 优先尝试获取合并的 canvas
+    let canvas = getMergedCanvas();
+    
+    // 如果失败，降级使用 html2canvas
+    if (!canvas) {
+      if (!window.html2canvas) {
+        const script2 = document.createElement('script');
+        script2.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+        document.head.appendChild(script2);
+        await new Promise((resolve, reject) => {
+          script2.onload = resolve;
+          script2.onerror = () => reject(new Error('html2canvas 加载失败'));
+        });
+      }
+      const container = document.getElementById('jsmind_container');
+      if (!container) {
+        showToast('当前无法获取思维导图，请先生成内容', 'error');
+        return;
+      }
+      canvas = await html2canvas(container, {
+        backgroundColor: '#09090b',
+        scale: 2,
+        useCORS: true,
+        logging: false
+      });
     }
-
-    // 使用 html2canvas 捕获整个容器
-    const canvas = await html2canvas(container, {
-      backgroundColor: '#09090b',
-      scale: 2,
-      useCORS: true,
-      logging: false
-    });
 
     const imgData = canvas.toDataURL('image/png');
     const imgW = canvas.width;
