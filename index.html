@@ -2388,40 +2388,47 @@ function convertToMarkdown(node, depth) {
 function exportToPng() {
   showToast('正在生成图片...');
   try {
-    // jsMind 可能生成多个 canvas，获取最后一个（通常是节点层）
-    const canvases = document.querySelectorAll('#jsmind_container canvas');
-    const canvas = canvases[canvases.length - 1]; // 取最后一个 canvas
-    
-    if (canvas) {
-      // 优先用 toBlob，失败则用 toDataURL
-      const tryExport = () => {
-        const dataUrl = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = dataUrl;
-        a.download = 'mindflow_' + getDateStr() + '.png';
-        a.click();
-        showToast('已导出 PNG 图片');
+    // 动态加载 html2canvas
+    if (!window.html2canvas) {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+      script.onload = () => doExportPng();
+      script.onerror = () => {
+        showToast('图片导出库加载失败', 'error');
       };
-      
-      if (canvas.toBlob) {
-        canvas.toBlob(function(blob) {
-          if (!blob) { tryExport(); return; }
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url; a.download = 'mindflow_' + getDateStr() + '.png';
-          a.click(); URL.revokeObjectURL(url);
-          showToast('已导出 PNG 图片');
-        }, 'image/png');
-      } else {
-        tryExport();
-      }
+      document.head.appendChild(script);
     } else {
-      fallbackPngExport();
+      doExportPng();
     }
   } catch(e) { 
     console.error('PNG export error:', e);
-    fallbackPngExport(); 
+    showToast('图片导出失败', 'error');
   }
+}
+
+function doExportPng() {
+  const container = document.getElementById('jsmind_container');
+  if (!container) {
+    showToast('当前无法获取思维导图', 'error');
+    return;
+  }
+
+  html2canvas(container, {
+    backgroundColor: '#09090b',
+    scale: 2, // 高清导出
+    useCORS: true,
+    logging: false
+  }).then(canvas => {
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mindflow_' + getDateStr() + '.png';
+    a.click();
+    showToast('已导出 PNG 图片');
+  }).catch(e => {
+    console.error('html2canvas error:', e);
+    showToast('图片导出失败', 'error');
+  });
 }
 
 function fallbackPngExport() {
@@ -2447,27 +2454,41 @@ function downloadText(content, filename, mime) {
 async function exportToPdf() {
   showToast('正在生成 PDF...');
   try {
-    // 动态加载 jsPDF
+    // 动态加载 jsPDF 和 html2canvas
     if (!window.jspdf) {
+      const script1 = document.createElement('script');
+      script1.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+      document.head.appendChild(script1);
       await new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-        script.onload = resolve;
-        script.onerror = () => reject(new Error('jsPDF 加载失败'));
-        document.head.appendChild(script);
+        script1.onload = resolve;
+        script1.onerror = () => reject(new Error('jsPDF 加载失败'));
       });
     }
-    const { jsPDF } = window.jspdf;
+    if (!window.html2canvas) {
+      const script2 = document.createElement('script');
+      script2.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+      document.head.appendChild(script2);
+      await new Promise((resolve, reject) => {
+        script2.onload = resolve;
+        script2.onerror = () => reject(new Error('html2canvas 加载失败'));
+      });
+    }
 
-    // 获取 jsMind canvas（取最后一个，通常是节点层）
-    const canvases = document.querySelectorAll('#jsmind_container canvas');
-    const canvas = canvases[canvases.length - 1];
-    if (!canvas) {
+    const { jsPDF } = window.jspdf;
+    const container = document.getElementById('jsmind_container');
+    if (!container) {
       showToast('当前无法获取思维导图，请先生成内容', 'error');
       return;
     }
 
-    // 使用 toDataURL 确保兼容性
+    // 使用 html2canvas 捕获整个容器
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#09090b',
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+
     const imgData = canvas.toDataURL('image/png');
     const imgW = canvas.width;
     const imgH = canvas.height;
