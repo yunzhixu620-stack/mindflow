@@ -641,6 +641,23 @@
     .sidebar { width: 100%; min-width: auto; height: 50%; }
     .main { flex-direction: column; }
     .mindmap-area { height: 50%; }
+    /* 思维碰撞面板手机端：移到左下角，避免遮挡右侧缩放按钮 */
+    .spark-panel { right: auto; left: 16px; top: auto; bottom: 56px; width: calc(100vw - 96px); }
+  }
+
+  /* 手机端 auth-box 适配 */
+  @media (max-width: 480px) {
+    .auth-box {
+      width: calc(100vw - 24px);
+      padding: 24px 18px 20px;
+      max-height: calc(100dvh - 48px);
+      overflow-y: auto;
+    }
+    .auth-logo { margin-bottom: 18px; }
+    .auth-logo-text { font-size: 16px; }
+    #loginApiWarn { display: none; }
+    /* 手机端隐藏 meeting 模式的 tabs，改用下拉 */
+    .mode-tabs { display: none; }
   }
 
   /* ===== 登录/注册界面 ===== */
@@ -648,6 +665,7 @@
     position: fixed; inset: 0; z-index: 9999;
     background: var(--bg-base);
     display: flex; align-items: center; justify-content: center;
+    padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 8px) calc(var(--safe-bottom) + 8px) calc(var(--safe-left) + 8px);
   }
   .auth-overlay.hidden { display: none; }
 
@@ -722,6 +740,32 @@
 
   .auth-hint { font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 4px; }
 
+  .auth-api-warn {
+    font-size: 11px; color: var(--warning);
+    text-align: center; margin-top: 6px; display: none;
+  }
+  .auth-api-warn a { text-decoration: underline; }
+
+  /* API 配置区（登录注册框底部） */
+  .auth-api-section {
+    margin-top: 16px;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 12px;
+  }
+  .auth-api-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 4px; cursor: pointer; user-select: none;
+    font-size: 12px; font-weight: 500; color: var(--text-secondary);
+    border-radius: var(--radius-sm); transition: background var(--transition);
+  }
+  .auth-api-toggle:hover { background: var(--bg-hover); }
+  .auth-api-toggle-arrow {
+    font-size: 10px; color: var(--text-muted);
+    transition: transform var(--transition);
+  }
+  .auth-api-section.open .auth-api-toggle-arrow { transform: rotate(180deg); }
+  .auth-api-body { padding-top: 4px; }
+
   /* 顶栏用户信息 */
   .user-badge {
     display: flex; align-items: center; gap: 8px;
@@ -782,7 +826,10 @@
       </div>
       <div class="auth-error" id="loginError"></div>
       <button class="auth-btn auth-btn-primary" id="loginBtn" onclick="doLogin()">登录</button>
-      <div class="auth-hint">还没有账号？点击上方「注册」创建</div>
+      <div class="auth-hint" id="loginHint">还没有账号？点击上方「注册」创建</div>
+      <div class="auth-api-warn" id="loginApiWarn">
+        ⚠️ 尚未配置 API？<a href="#" onclick="switchAuthTab('register'); return false;" style="color:var(--accent-hover)">去注册</a>时填写即可配置
+      </div>
     </div>
 
     <!-- 注册表单 -->
@@ -803,6 +850,26 @@
       <div class="auth-error" id="registerError"></div>
       <button class="auth-btn auth-btn-primary" id="registerBtn" onclick="doRegister()">注册并登录</button>
       <div class="auth-hint">注册后 API 配置将与账号绑定，多设备同步</div>
+    </div>
+
+    <!-- 注册时 API 配置（展开折叠） -->
+    <div class="auth-api-section" id="authApiSection">
+      <div class="auth-api-toggle" onclick="toggleAuthApi()" id="authApiToggle">
+        <span>⚙️ API 配置</span>
+        <span class="auth-api-toggle-arrow" id="authApiArrow">▼</span>
+      </div>
+      <div class="auth-api-body" id="authApiBody" style="display:none">
+        <div class="auth-form-group" style="margin-top:12px">
+          <label>API 代理地址 <span style="color:var(--danger);font-size:10px">必填</span></label>
+          <input class="auth-input" id="authProxyUrl" type="text" placeholder="https://xxx.cn-hangzhou.fcapp.run" autocomplete="off" />
+          <div class="auth-hint" style="text-align:left;font-size:10px;margin-top:2px">阿里云函数计算 FC 的公网地址（必填）</div>
+        </div>
+        <div class="auth-form-group">
+          <label>API Key <span style="color:var(--text-muted);font-size:10px;font-weight:400">（可选，留空用内置 Key）</span></label>
+          <input class="auth-input" id="authApiKey" type="password" placeholder="sk-xxxxxx（可选）" autocomplete="off" />
+          <div class="auth-hint" style="text-align:left;font-size:10px;margin-top:2px">从阿里云百炼平台获取</div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1139,6 +1206,10 @@ async function checkAuthAndInit() {
 
 function showAuthOverlay() {
   document.getElementById('authOverlay').classList.remove('hidden');
+  // 如果已有代理配置，隐藏警告
+  const savedProxy = localStorage.getItem('mindflow_proxy');
+  const warn = document.getElementById('loginApiWarn');
+  if (warn) warn.style.display = savedProxy ? 'none' : 'block';
 }
 
 function showMainApp() {
@@ -1175,6 +1246,24 @@ function showMainApp() {
 
 // ==================== 登录/注册 ====================
 
+function toggleAuthApi() {
+  const section = document.getElementById('authApiSection');
+  const body = document.getElementById('authApiBody');
+  const isOpen = section.classList.contains('open');
+  if (isOpen) {
+    section.classList.remove('open');
+    body.style.display = 'none';
+  } else {
+    section.classList.add('open');
+    body.style.display = 'block';
+    // 预填已保存的 API 配置
+    const savedProxy = localStorage.getItem('mindflow_proxy');
+    const savedApiKey = localStorage.getItem('mindflow_apikey');
+    if (savedProxy) document.getElementById('authProxyUrl').value = savedProxy;
+    if (savedApiKey) document.getElementById('authApiKey').value = savedApiKey;
+  }
+}
+
 // FC 代理地址（硬编码，用于认证 API）
 const AUTH_PROXY = 'https://mindflow-proxy-dbyxpormng.cn-hangzhou.fcapp.run';
 
@@ -1186,6 +1275,20 @@ function switchAuthTab(tab) {
   document.getElementById('formRegister').style.display = isLogin ? 'none' : 'flex';
   document.getElementById('loginError').classList.remove('show');
   document.getElementById('registerError').classList.remove('show');
+  // 切换到注册时展开 API 配置，登录时收起
+  const apiSection = document.getElementById('authApiSection');
+  if (!isLogin) {
+    // 注册时：展开 API 区并预填
+    apiSection.classList.add('open');
+    document.getElementById('authApiBody').style.display = 'block';
+    const savedProxy = localStorage.getItem('mindflow_proxy');
+    const savedKey = localStorage.getItem('mindflow_apikey');
+    if (savedProxy) document.getElementById('authProxyUrl').value = savedProxy;
+    if (savedKey) document.getElementById('authApiKey').value = savedKey;
+  } else {
+    apiSection.classList.remove('open');
+    document.getElementById('authApiBody').style.display = 'none';
+  }
 }
 
 function showAuthError(id, msg) {
@@ -1232,6 +1335,11 @@ async function doRegister() {
   if (password !== confirm) { showAuthError('registerError', '两次密码不一致'); return; }
   if (password.length < 6) { showAuthError('registerError', '密码至少 6 位'); return; }
 
+  // 获取 API 配置
+  const proxyUrl = document.getElementById('authProxyUrl') ? document.getElementById('authProxyUrl').value.trim() : '';
+  const apiKey    = document.getElementById('authApiKey') ? document.getElementById('authApiKey').value.trim() : '';
+  if (!proxyUrl) { showAuthError('registerError', '请填写「API 代理地址」（必填）'); return; }
+
   const btn = document.getElementById('registerBtn');
   btn.disabled = true; btn.textContent = '注册中...';
   document.getElementById('registerError').classList.remove('show');
@@ -1240,7 +1348,7 @@ async function doRegister() {
     const res = await fetch(AUTH_PROXY + '/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, apiKey, apiBase: proxyUrl }),
     });
     const data = await res.json();
     if (!res.ok) { showAuthError('registerError', data.error || '注册失败'); return; }
@@ -2243,6 +2351,12 @@ async function toggleVoice() {
     }
   } else {
     // 开始录音
+    // 先检查 API 是否配置
+    const savedProxy = localStorage.getItem('mindflow_proxy');
+    if (!savedProxy) {
+      showToast('请先在设置中填写「API 代理地址」后再使用语音', 'error');
+      return;
+    }
     try {
       await startASR();
       State.isRecording = true;
