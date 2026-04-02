@@ -6,6 +6,8 @@
 <title>MindFlow</title>
 <link type="text/css" rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jsmind@0.9.1/style/jsmind.css" />
 <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsmind@0.9.1/es6/jsmind.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/dom-to-image@2.6.0/dist/dom-to-image.min.js"></script>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/jsmind@0.9.1/es6/jsmind.screenshot.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -2386,61 +2388,19 @@ function convertToMarkdown(node, depth) {
 }
 
 function exportToPng() {
+  if (!State.jm) {
+    showToast('请先生成思维导图', 'error');
+    return;
+  }
   showToast('正在生成图片...');
   try {
-    // 使用 jsMind 原生 canvas 导出（最可靠，捕获完整导图）
-    const dataUrl = exportMindmapToPng();
-    if (dataUrl) {
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = 'mindflow_' + getDateStr() + '.png';
-      a.click();
-      showToast('已导出 PNG 图片');
-    } else {
-      showToast('导出失败，请确保思维导图已生成', 'error');
-    }
+    // 使用 jsMind 官方 screenshot 插件
+    State.jm.shoot();
+    showToast('已导出 PNG 图片');
   } catch(e) { 
     console.error('PNG export error:', e);
     showToast('图片导出失败', 'error');
   }
-}
-
-// 使用 jsMind canvas 直接导出完整导图
-function exportMindmapToPng() {
-  const container = document.getElementById('jsmind_container');
-  if (!container) return null;
-  
-  // 获取所有 canvas
-  const canvases = container.querySelectorAll('canvas');
-  if (canvases.length === 0) return null;
-  
-  // 找到包含完整导图的最大 canvas
-  let mainCanvas = null;
-  let maxArea = 0;
-  canvases.forEach(c => {
-    const area = c.width * c.height;
-    if (area > maxArea) {
-      maxArea = area;
-      mainCanvas = c;
-    }
-  });
-  
-  if (!mainCanvas) return null;
-  
-  // 创建新 canvas，添加背景色
-  const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = mainCanvas.width;
-  exportCanvas.height = mainCanvas.height;
-  const ctx = exportCanvas.getContext('2d');
-  
-  // 填充深色背景
-  ctx.fillStyle = '#09090b';
-  ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-  
-  // 绘制原 canvas 内容
-  ctx.drawImage(mainCanvas, 0, 0);
-  
-  return exportCanvas.toDataURL('image/png');
 }
 
 function fallbackHtml2CanvasPng() {
@@ -2542,27 +2502,32 @@ function downloadText(content, filename, mime) {
 }
 
 async function exportToPdf() {
+  if (!State.jm) {
+    showToast('请先生成思维导图', 'error');
+    return;
+  }
   showToast('正在生成 PDF...');
   try {
     // 动态加载 jsPDF
     if (!window.jspdf) {
-      const script1 = document.createElement('script');
-      script1.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
-      document.head.appendChild(script1);
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+      document.head.appendChild(script);
       await new Promise((resolve, reject) => {
-        script1.onload = resolve;
-        script1.onerror = () => reject(new Error('jsPDF 加载失败'));
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('jsPDF 加载失败'));
       });
     }
 
     const { jsPDF } = window.jspdf;
     
-    // 使用 canvas 直接获取导图数据
-    const imgData = exportMindmapToPng();
-    if (!imgData) {
-      showToast('当前无法获取思维导图，请先生成内容', 'error');
-      return;
-    }
+    // 使用 jsMind 官方 screenshot 插件获取图片
+    const container = State.jm.view.getContainer();
+    
+    const imgData = await domtoimage.toPng(container, {
+      bgcolor: '#09090b',
+      scale: 2
+    });
     
     // 从 dataUrl 获取图像尺寸
     const img = new Image();
@@ -2574,7 +2539,7 @@ async function exportToPdf() {
     const imgW = img.width;
     const imgH = img.height;
 
-    // 计算 PDF 尺寸（保持比例，A4 竖向，最大宽度 170mm）
+    // 计算 PDF 尺寸
     const a4W = 210;
     const a4H = 297;
     const margin = 15;
@@ -2583,12 +2548,10 @@ async function exportToPdf() {
     const pdfW = maxW;
     const pdfH = pdfW * ratio;
 
-    // 根据内容比例选择方向
-    const availH = a4H - margin - 30; // 留出标题和页脚空间
+    const availH = a4H - margin - 30;
     const orientation = (pdfH > availH) ? 'landscape' : 'portrait';
     const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
 
-    // 添加标题
     const rootTopic = State.mindmapData?.topic || 'MindFlow 思维导图';
     const pageW = orientation === 'portrait' ? a4W : a4H;
     const pageH = orientation === 'portrait' ? a4H : a4W;
@@ -2602,7 +2565,6 @@ async function exportToPdf() {
     doc.setDrawColor(240, 240, 240);
     doc.line(margin, margin + 11, pageW - margin, margin + 11);
 
-    // 添加思维导图图片（居中）
     const imgTop = margin + 14;
     const availContentH = pageH - imgTop - margin;
     const finalW = Math.min(pdfW, (availContentH / ratio));
@@ -2610,7 +2572,6 @@ async function exportToPdf() {
     const imgLeft = (pageW - finalW) / 2;
     doc.addImage(imgData, 'PNG', imgLeft, imgTop, finalW, finalH);
 
-    // 添加页脚
     doc.setFontSize(8);
     doc.setTextColor(180, 180, 180);
     doc.text('由 MindFlow 生成 · ' + getDateStr(), margin, pageH - margin / 2);
