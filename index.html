@@ -40,6 +40,12 @@
     --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
     --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
 
+    /* iOS 安全区域 */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
     /* 分支颜色 - 8 种和谐色 */
     --branch-1: #6366f1;
     --branch-2: #06b6d4;
@@ -57,13 +63,17 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
     background: var(--bg-base);
     color: var(--text-primary);
-    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     font-size: 13px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    /* iOS Safari 防止弹性滚动问题 */
+    position: fixed;
+    width: 100%;
+    touch-action: manipulation;
   }
 
   /* ===== 顶部导航 ===== */
@@ -72,7 +82,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 16px;
-    height: 48px;
+    padding-top: max(0px, env(safe-area-inset-top));
+    height: calc(48px + env(safe-area-inset-top));
     background: var(--bg-surface);
     border-bottom: 1px solid var(--border-subtle);
     flex-shrink: 0;
@@ -138,13 +149,20 @@
   .topbar-divider { width: 1px; height: 20px; background: var(--border-default); margin: 0 4px; }
 
   /* ===== 主体布局 ===== */
-  .main { display: flex; flex: 1; overflow: hidden; }
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    min-height: 0; /* 关键：允许 flex 子项收缩 */
+    height: 100dvh; /* 确保在 fixed body 下也有高度 */
+  }
 
   /* ===== 左侧面板 ===== */
   .sidebar {
     width: 340px; min-width: 340px;
     background: var(--bg-surface); border-right: 1px solid var(--border-subtle);
     display: flex; flex-direction: column; overflow: hidden;
+    min-height: 0; flex-shrink: 0;
   }
 
   .history-section {
@@ -341,6 +359,34 @@
     position: absolute; bottom: 16px; right: 16px;
     display: flex; flex-direction: column; gap: 2px; z-index: 60;
   }
+
+  /* 小地图 */
+  .minimap-container {
+    position: absolute; bottom: 16px; right: 58px;
+    width: 140px; height: 100px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    cursor: pointer;
+    z-index: 60;
+    box-shadow: var(--shadow-md);
+    transition: opacity var(--transition);
+    opacity: 0.85;
+  }
+  .minimap-container:hover { opacity: 1; border-color: var(--accent-border); }
+  .minimap-container.hidden { display: none; }
+  #minimapCanvas {
+    width: 100%; height: 100%;
+    display: block;
+  }
+  .minimap-viewport {
+    position: absolute;
+    border: 1.5px solid var(--accent);
+    background: rgba(99,102,241,0.1);
+    border-radius: 2px;
+    pointer-events: none;
+  }
   .zoom-btn {
     width: 32px; height: 32px; border-radius: var(--radius-md);
     border: 1px solid var(--border-default); background: var(--bg-elevated);
@@ -439,13 +485,16 @@
 
   /* Toast */
   .toast {
-    position: fixed; bottom: 20px; left: 50%;
+    position: fixed; bottom: max(20px, calc(env(safe-area-inset-bottom) + 20px)); left: 50%;
     transform: translateX(-50%) translateY(70px);
-    padding: 8px 16px; border-radius: var(--radius-lg);
+    padding: 10px 18px; border-radius: var(--radius-lg);
     background: var(--bg-elevated); border: 1px solid var(--border-default);
-    color: var(--text-primary); font-size: 12px; font-weight: 500;
-    z-index: 1000; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: var(--shadow-lg); white-space: nowrap; display: flex; align-items: center; gap: 6px;
+    color: var(--text-primary); font-size: 13px; font-weight: 500;
+    z-index: 99999; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-lg); white-space: nowrap; display: flex; align-items: center; gap: 8px;
+    max-width: calc(100vw - 40px);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
   .toast.toast-success { border-color: rgba(34,197,94,0.3); }
@@ -638,11 +687,30 @@
 
   /* 响应式 */
   @media (max-width: 768px) {
-    .sidebar { width: 100%; min-width: auto; height: 50%; }
-    .main { flex-direction: column; }
-    .mindmap-area { height: 50%; }
+    .sidebar {
+      width: 100%; min-width: auto;
+      height: 50%;
+      min-height: 0;
+      flex-shrink: 0;
+    }
+    .main {
+      flex-direction: column;
+      height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .mindmap-area {
+      height: 50%;
+      min-height: 0;
+      flex-shrink: 0;
+    }
     /* 思维碰撞面板手机端：移到左下角，避免遮挡右侧缩放按钮 */
-    .spark-panel { right: auto; left: 16px; top: auto; bottom: 56px; width: calc(100vw - 96px); }
+    .spark-panel { right: auto; left: 16px; top: auto; bottom: max(56px, calc(env(safe-area-inset-bottom) + 56px)); width: calc(100vw - 96px); }
+    /* 手机端底部安全区域 */
+    .input-area {
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+    }
+    /* 手机端隐藏小地图（PC 专属功能） */
+    .minimap-container { display: none !important; }
   }
 
   /* 手机端 auth-box 适配 */
@@ -658,6 +726,9 @@
     #loginApiWarn { display: none; }
     /* 手机端隐藏 meeting 模式的 tabs，改用下拉 */
     .mode-tabs { display: none; }
+    /* 手机端思维导图区域更大 */
+    .sidebar { height: 40%; }
+    .mindmap-area { height: 60%; }
   }
 
   /* ===== 登录/注册界面 ===== */
@@ -933,6 +1004,10 @@
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           导出为 PNG 图片
         </div>
+        <div class="export-menu-item" onclick="exportAs('pdf')">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          导出为 PDF
+        </div>
         <div class="export-menu-item" onclick="exportAs('markdown')">
           <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 15V9l4 4 4-4v6"/></svg>
           导出为 Markdown
@@ -1060,6 +1135,12 @@
       </div>
     </div>
 
+    <!-- 小地图 -->
+    <div class="minimap-container hidden" id="minimapContainer" onclick="onMinimapClick(event)">
+      <canvas id="minimapCanvas"></canvas>
+      <div class="minimap-viewport" id="minimapViewport"></div>
+    </div>
+
     <!-- 缩放控件 -->
     <div class="zoom-controls" id="zoomControls" style="display:none">
       <button class="zoom-btn" onclick="zoomIn()" title="放大">
@@ -1185,6 +1266,10 @@ const BRANCH_COLORS = [
 function init() {
   // 先检查登录状态
   checkAuthAndInit();
+
+  // 监听窗口变化，更新小地图
+  window.addEventListener('resize', scheduleMinimapUpdate);
+  window.addEventListener('orientationchange', () => setTimeout(scheduleMinimapUpdate, 500));
 }
 
 async function checkAuthAndInit() {
@@ -2040,6 +2125,7 @@ function applyZoom(scale) {
     }
   }
   document.getElementById('zoomLevel').textContent = Math.round(scale * 100) + '%';
+  scheduleMinimapUpdate();
 }
 
 function zoomIn() { applyZoom(Math.min(3.0, State.zoomScale + 0.15)); }
@@ -2056,6 +2142,108 @@ function fitMindmap() {
     if (inner) inner.style.transform = 'scale(1)';
   } catch(e) { applyZoom(1.0); }
   document.getElementById('zoomLevel').textContent = '100%';
+  scheduleMinimapUpdate();
+}
+
+// ==================== 小地图 ====================
+let minimapTimer = null;
+
+function updateMinimap() {
+  if (!State.jm) return;
+  const container = document.getElementById('minimapContainer');
+  const canvas = document.getElementById('minimapCanvas');
+  if (!container || !canvas) return;
+
+  const jmCanvas = document.querySelector('#jsmind_container canvas');
+  if (!jmCanvas) { container.classList.add('hidden'); return; }
+
+  // 显示小地图
+  container.classList.remove('hidden');
+
+  // 绘制缩略图
+  const ctx = canvas.getContext('2d');
+  const w = canvas.offsetWidth;
+  const h = canvas.offsetHeight;
+  canvas.width = w * (window.devicePixelRatio || 1);
+  canvas.height = h * (window.devicePixelRatio || 1);
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+
+  // 清空
+  ctx.fillStyle = '#09090b';
+  ctx.fillRect(0, 0, w, h);
+
+  // 绘制缩略的思维导图
+  ctx.drawImage(jmCanvas, 0, 0, w, h);
+
+  // 更新视口指示器
+  updateMinimapViewport(w, h);
+}
+
+function updateMinimapViewport(canvasW, canvasH) {
+  const vp = document.getElementById('minimapViewport');
+  if (!vp || !State.jm) return;
+
+  const jmCanvas = document.querySelector('#jsmind_container canvas');
+  if (!jmCanvas) return;
+
+  // 获取 jsmind inner 的变换
+  const inner = document.querySelector('.jsmind-inner');
+  const area = document.getElementById('mindmapArea');
+  if (!inner || !area) return;
+
+  // 计算 jsmind 内容区域
+  const jmW = jmCanvas.width / (window.devicePixelRatio || 1);
+  const jmH = jmCanvas.height / (window.devicePixelRatio || 1);
+  const areaW = area.offsetWidth;
+  const areaH = area.offsetHeight;
+
+  // 计算缩放比例
+  const scaleX = canvasW / jmW;
+  const scaleY = canvasH / jmH;
+  const scale = Math.min(scaleX, scaleY);
+
+  // 视口大小（当前可见区域占整个导图的比例）
+  const vpW = Math.max(20, (areaW / jmW) * canvasW / scale);
+  const vpH = Math.max(14, (areaH / jmH) * canvasH / scale);
+
+  // 视口位置（居中）
+  vp.style.width = Math.min(vpW, canvasW) + 'px';
+  vp.style.height = Math.min(vpH, canvasH) + 'px';
+  vp.style.left = Math.max(0, (canvasW - vpW) / 2) + 'px';
+  vp.style.top = Math.max(0, (canvasH - vpH) / 2) + 'px';
+}
+
+function onMinimapClick(e) {
+  // 点击小地图时，导航到对应位置
+  const container = document.getElementById('minimapContainer');
+  const rect = container.getBoundingClientRect();
+  const jmCanvas = document.querySelector('#jsmind_container canvas');
+  if (!jmCanvas || !State.jm) return;
+
+  // 计算点击位置相对于小地图的比例
+  const ratioX = e.clientX - rect.left;
+  const ratioY = e.clientY - rect.top;
+  const clickX = (ratioX / rect.width) * jmCanvas.width / (window.devicePixelRatio || 1);
+  const clickY = (ratioY / rect.height) * jmCanvas.height / (window.devicePixelRatio || 1);
+
+  // 计算 jsmind 画布的偏移
+  const area = document.getElementById('mindmapArea');
+  const centerX = clickX - area.offsetWidth / 2;
+  const centerY = clickY - area.offsetHeight / 2;
+
+  State.dragOffsetX = -centerX;
+  State.dragOffsetY = -centerY;
+  const inner = document.querySelector('.jsmind-inner');
+  if (inner) {
+    inner.style.transformOrigin = '0 0';
+    inner.style.transform = `translate(${State.dragOffsetX}px, ${State.dragOffsetY}px) scale(${State.zoomScale})`;
+  }
+  updateMinimap();
+}
+
+function scheduleMinimapUpdate() {
+  if (minimapTimer) clearTimeout(minimapTimer);
+  minimapTimer = setTimeout(updateMinimap, 300);
 }
 
 // ==================== 全部展开/折叠 ====================
@@ -2106,17 +2294,21 @@ function toggleExportMenu(e) {
 
 function exportAs(type) {
   document.getElementById('exportMenu').classList.remove('show');
-  if (!State.mindmapData) { showToast('没有可导出的导图', 'error'); return; }
+  if (!State.mindmapData && type !== 'json' && type !== 'markdown') {
+    showToast('没有可导出的导图', 'error'); return;
+  }
 
   if (type === 'json') {
-    downloadText(JSON.stringify(State.mindmapData, null, 2), 'mindflow_' + getDateStr() + '.json', 'application/json');
+    downloadText(JSON.stringify(State.mindmapData || {}, null, 2), 'mindflow_' + getDateStr() + '.json', 'application/json');
     showToast('已导出 JSON');
   } else if (type === 'markdown') {
-    const md = convertToMarkdown(State.mindmapData);
+    const md = convertToMarkdown(State.mindmapData || {});
     downloadText(md, 'mindflow_' + getDateStr() + '.md', 'text/markdown');
     showToast('已导出 Markdown');
   } else if (type === 'png') {
     exportToPng();
+  } else if (type === 'pdf') {
+    exportToPdf();
   }
 }
 
@@ -2169,6 +2361,74 @@ function downloadText(content, filename, mime) {
   URL.revokeObjectURL(url);
 }
 
+async function exportToPdf() {
+  showToast('正在生成 PDF...');
+  try {
+    // 动态加载 jsPDF
+    if (!window.jspdf) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2/dist/jspdf.umd.min.js';
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('jsPDF 加载失败'));
+        document.head.appendChild(script);
+      });
+    }
+    const { jsPDF } = window.jspdf;
+
+    // 获取 jsMind canvas
+    const canvas = document.querySelector('#jsmind_container canvas');
+    if (!canvas) {
+      showToast('当前无法获取思维导图，请先生成内容', 'error');
+      return;
+    }
+
+    const imgData = canvas.toDataURL('image/png');
+    const imgW = canvas.width;
+    const imgH = canvas.height;
+
+    // 计算 PDF 尺寸（保持比例，A4 竖向，最大宽度 170mm）
+    const a4W = 210;
+    const a4H = 297;
+    const margin = 15;
+    const maxW = a4W - margin * 2;
+    const ratio = imgH / imgW;
+    const pdfW = Math.min(maxW, a4W - margin * 2);
+    const pdfH = pdfW * ratio;
+
+    const doc = new jsPDF({ orientation: pdfH > a4H ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+
+    // 添加标题
+    const rootTopic = State.mindmapData?.topic || 'MindFlow 思维导图';
+    doc.setFontSize(14);
+    doc.setTextColor(99, 102, 241);
+    doc.text('MindFlow', margin, margin + 4);
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text(rootTopic, margin, margin + 9);
+    doc.setDrawColor(240, 240, 240);
+    doc.line(margin, margin + 11, a4W - margin, margin + 11);
+
+    // 添加思维导图图片
+    const imgTop = margin + 14;
+    const availH = a4H - imgTop - margin;
+    const finalW = Math.min(pdfW, (availH / ratio));
+    const finalH = finalW * ratio;
+    doc.addImage(imgData, 'PNG', margin, imgTop, finalW, finalH);
+
+    // 添加页脚
+    doc.setFontSize(8);
+    doc.setTextColor(180, 180, 180);
+    doc.text('由 MindFlow 生成 · ' + getDateStr(), margin, a4H - margin / 2);
+
+    doc.save('mindflow_' + getDateStr() + '.pdf');
+    showToast('已导出 PDF 文件');
+  } catch(e) {
+    console.error(e);
+    showToast('PDF 导出失败：' + e.message, 'error');
+  }
+}
+
 function getDateStr() { return new Date().toISOString().slice(0, 10); }
 
 // ==================== 示例填充 ====================
@@ -2194,6 +2454,17 @@ function toggleSettings() {
   const overlay = document.getElementById('settingsOverlay');
   const modal = document.getElementById('settingsModal');
   const isShow = overlay.classList.contains('show');
+
+  // 每次打开时，从 localStorage 加载最新值
+  if (!isShow) {
+    const savedApiKey = localStorage.getItem('mindflow_apikey');
+    const savedProxy  = localStorage.getItem('mindflow_proxy');
+    const savedModel  = localStorage.getItem('mindflow_model');
+    document.getElementById('apiKey').value = savedApiKey || '';
+    document.getElementById('proxyUrl').value = savedProxy || '';
+    if (savedModel) document.getElementById('modelSelect').value = savedModel;
+  }
+
   overlay.classList.toggle('show', !isShow);
   modal.classList.toggle('show', !isShow);
 }
@@ -2428,35 +2699,90 @@ async function startASR() {
       }
     };
 
-    ws.onerror = (e) => reject(e);
+    ws.onerror = (e) => reject(new Error('WebSocket 连接失败，请检查网络和 API 地址'));
 
-    setTimeout(() => reject(new Error('连接超时')), 10000);
+    setTimeout(() => reject(new Error('连接超时（10秒），请检查 API 地址是否可访问')), 10000);
   });
 
   // 初始化音频采集
   audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
   mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const source = audioContext.createMediaStreamSource(mediaStream);
-  scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
-  source.connect(scriptProcessor);
-  scriptProcessor.connect(audioContext.destination);
 
-  scriptProcessor.onaudioprocess = (event) => {
-    const inputData = event.inputBuffer.getChannelData(0);
-    const pcm = new Int16Array(inputData.length);
-    for (let i = 0; i < inputData.length; i++) {
-      pcm[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7fff;
+  // 尝试使用 AudioWorklet（现代浏览器），降级到 ScriptProcessor
+  try {
+    const bufferSize = 4096;
+    // AudioWorklet 方案（推荐）
+    class PCMProcessor extends AudioWorkletProcessor {
+      process(inputs, outputs) {
+        const input = inputs[0][0];
+        if (input) {
+          const pcm = new Int16Array(input.length);
+          for (let i = 0; i < input.length; i++) {
+            pcm[i] = Math.max(-1, Math.min(1, input[i])) * 0x7fff;
+          }
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(pcm.buffer);
+          }
+        }
+        return true;
+      }
     }
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(pcm.buffer);
-    }
-  };
+    await audioContext.audioWorklet.addModule(Blob.createObjectURL(
+      new Blob([`
+        class PCMProcessor extends AudioWorkletProcessor {
+          process(inputs, outputs) {
+            const input = inputs[0][0];
+            if (input) {
+              const pcm = new Int16Array(input.length);
+              for (let i = 0; i < input.length; i++) {
+                pcm[i] = Math.max(-1, Math.min(1, input[i])) * 0x7fff;
+              }
+              this.port.postMessage({ pcm: pcm.buffer });
+            }
+            return true;
+          }
+        }
+        registerProcessor('pcm-processor', PCMProcessor);
+      `], { type: 'application/javascript' })
+    ));
+    const workletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+    workletNode.port.onmessage = (e) => {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(e.data.pcm);
+    };
+    source.connect(workletNode);
+    workletNode.connect(audioContext.destination);
+    scriptProcessor = workletNode; // 用于 stopASR 清理
+  } catch (e) {
+    // 降级到 ScriptProcessor
+    console.warn('[ASR] AudioWorklet 不可用，使用 ScriptProcessor:', e);
+    scriptProcessor = audioContext.createScriptProcessor(4096, 1, 1);
+    source.connect(scriptProcessor);
+    scriptProcessor.connect(audioContext.destination);
+    scriptProcessor.onaudioprocess = (event) => {
+      const inputData = event.inputBuffer.getChannelData(0);
+      const pcm = new Int16Array(inputData.length);
+      for (let i = 0; i < inputData.length; i++) {
+        pcm[i] = Math.max(-1, Math.min(1, inputData[i])) * 0x7fff;
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(pcm.buffer);
+      }
+    };
+  }
+
+  // iOS Safari: AudioContext 默认是 suspended，需要手动 resume
+  if (audioContext.state === 'suspended') {
+    await audioContext.resume();
+    console.log('[ASR] AudioContext 已恢复，状态:', audioContext.state);
+  }
 }
 
 function stopASR() {
   // 1. 先停止麦克风采集
   if (scriptProcessor) {
     scriptProcessor.disconnect();
+    if (scriptProcessor.port) scriptProcessor.port.postMessage({}); // 停止 AudioWorklet
     scriptProcessor = null;
   }
   if (mediaStream) {
@@ -2464,7 +2790,7 @@ function stopASR() {
     mediaStream = null;
   }
   if (audioContext) {
-    audioContext.close();
+    audioContext.close().catch(() => {});
     audioContext = null;
   }
 
@@ -2593,7 +2919,7 @@ async function callAI(systemPrompt, userMessage, temperature) {
 // ==================== 会议模式 ====================
 async function processMeetingInput(text) {
   if (!State.mindmapData) {
-    const sp = '你是资深战略顾问，擅长从会议内容中提炼核心观点和决策逻辑。\n\n格式：{"topic":"会议主题","children":[{"topic":"核心维度","children":[{"topic":"关键洞察/判断"}]}]}\n\n严格规则：\n1. 只保留 3-5 个一级分支，每个 1-3 个子节点\n2. 每个节点必须是「观点」或「结论」或「行动判断」，不要罗列原始数据\n3. 把散乱信息提炼成有逻辑的判断句（如「技术方案需重新评估」而非「张三说方案有问题」）\n4. 一级分支加 emoji 前缀\n5. 最多 3 层，不要更深\n6. 只输出 JSON';
+    const sp = '你是资深战略顾问，擅长从会议内容中提炼核心观点和决策逻辑。\n\n格式：{"topic":"会议主题","children":[{"topic":"核心维度","children":[{"topic":"关键洞察/判断"}]}]}\n\n严格规则：\n1. 生成 4-8 个一级分支（维度），每个 1-5 个子节点，根据内容量自行判断\n2. 每个节点必须是「观点」或「结论」或「行动判断」，不要罗列原始数据\n3. 把散乱信息提炼成有逻辑的判断句（如「技术方案需重新评估」而非「张三说方案有问题」）\n4. 一级分支加 emoji 前缀\n5. 最多 3 层，不要更深\n6. 只输出 JSON';
     const result = await callAI(sp, '会议内容：\n' + text);
     if (result) {
       try {
@@ -2619,7 +2945,7 @@ async function processMeetingInput(text) {
 // ==================== 知识碎片模式 ====================
 async function processKnowledgeInput(text) {
   if (!State.mindmapData) {
-    const sp = '你是知识管理专家，擅长从碎片信息中提炼核心原理和底层逻辑。\n\n格式：{"topic":"知识主题","children":[{"topic":"核心原理/规律","children":[{"topic":"具体表现/推论"}]}]}\n\n严格规则：\n1. 只保留 3-5 个一级分支，每个 1-2 个子节点\n2. 每个节点必须是「概念定义」「核心原理」「因果逻辑」或「实践启示」\n3. 不要罗列表面现象，要挖掘背后的 WHY（如「反馈延迟导致行为矫正困难」而非「人们坚持不了习惯」）\n4. 一级分支加 emoji 前缀\n5. 最多 3 层，不要更深\n6. 只输出 JSON';
+    const sp = '你是知识管理专家，擅长从碎片信息中提炼核心原理和底层逻辑。\n\n格式：{"topic":"知识主题","children":[{"topic":"核心原理/规律","children":[{"topic":"具体表现/推论"}]}]}\n\n严格规则：\n1. 生成 3-7 个一级分支，每个 1-4 个子节点，根据内容量自行判断\n2. 每个节点必须是「概念定义」「核心原理」「因果逻辑」或「实践启示」\n3. 不要罗列表面现象，要挖掘背后的 WHY（如「反馈延迟导致行为矫正困难」而非「人们坚持不了习惯」）\n4. 一级分支加 emoji 前缀\n5. 最多 3 层，不要更深\n6. 只输出 JSON';
     const result = await callAI(sp, '知识碎片：\n' + text);
     if (result) {
       try {
@@ -2647,7 +2973,7 @@ async function processArticleInput(text) {
     addMessage('ai', '⚠️ 目前无法直接访问链接，请复制文章正文后粘贴给我。公众号文章可以用「阅读原文」复制全文。');
     return;
   }
-  const sp = '你是资深分析师，擅长从文章中提炼核心论点和逻辑链条。\n\n格式：{"topic":"文章核心论点","children":[{"topic":"分论点/论据维度","children":[{"topic":"关键推论/洞察"}]}]}\n\n严格规则：\n1. 只保留 3-5 个一级分支，每个 1-2 个子节点\n2. 每个节点必须是「论点」「判断」「逻辑推理」或「核心洞察」\n3. 不要照搬原文句子，用自己的话提炼观点（如「数据驱动决策是增长的关键杠杆」而非「文中提到通过数据分析发现增长点」）\n4. 把具体案例和数据抽象为判断句，不要直接罗列\n5. 一级分支加 emoji 前缀\n6. 最多 3 层，不要更深\n7. 只输出 JSON';
+  const sp = '你是资深分析师，擅长从文章中提炼核心论点和逻辑链条。\n\n格式：{"topic":"文章核心论点","children":[{"topic":"分论点/论据维度","children":[{"topic":"关键推论/洞察"}]}]}\n\n严格规则：\n1. 生成 3-7 个一级分支，每个 1-4 个子节点，根据内容量自行判断\n2. 每个节点必须是「论点」「判断」「逻辑推理」或「核心洞察」\n3. 不要照搬原文句子，用自己的话提炼观点（如「数据驱动决策是增长的关键杠杆」而非「文中提到通过数据分析发现增长点」）\n4. 把具体案例和数据抽象为判断句，不要直接罗列\n5. 一级分支加 emoji 前缀\n6. 最多 3 层，不要更深\n7. 只输出 JSON';
   const result = await callAI(sp, '文章内容：\n\n' + text);
   if (result) {
     try {
@@ -2748,6 +3074,9 @@ function renderMindmap(data) {
   // 渲染后给节点应用分支颜色的连线
   setTimeout(() => applyBranchLineColors(), 100);
 
+  // 更新小地图
+  scheduleMinimapUpdate();
+
   State.jm.add_event_listener(function(type, node) {
     if (type === 'edit_end') {
       // 用户手动编辑后同步数据
@@ -2784,6 +3113,7 @@ function clearAll() {
   document.getElementById('placeholder').style.display = '';
   document.getElementById('sparkList').innerHTML = '';
   document.getElementById('zoomControls').style.display = 'none';
+  document.getElementById('minimapContainer').classList.add('hidden');
   State.zoomScale = 1.0;
   showToast('已清空当前内容');
 }
