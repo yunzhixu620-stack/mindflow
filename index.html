@@ -1449,7 +1449,7 @@ function toggleAuthApi() {
 }
 
 // FC 代理地址（硬编码，用于认证 API）
-const AUTH_PROXY = 'https://mindflow-proxy-dbyxpormng.cn-hangzhou.fcapp.run';
+const AUTH_PROXY = 'https://mindflo-proxy-v-wcinvaqzap.cn-hangzhou.fcapp.run';
 
 function switchAuthTab(tab) {
   const isLogin = tab === 'login';
@@ -2824,7 +2824,7 @@ document.getElementById('meetingGoal').addEventListener('keydown', function(e) {
 // ==================== 语音识别（阿里云 Paraformer via FC 代理）====================
 // 优先使用用户配置的代理地址，fallback 到硬编码地址（老版本兼容）
 function getAsrProxy() {
-  return localStorage.getItem('mindflow_proxy') || 'https://mindflow-proxy-dbyxpormng.cn-hangzhou.fcapp.run';
+  return localStorage.getItem('mindflow_proxy') || 'https://mindflo-proxy-v-wcinvaqzap.cn-hangzhou.fcapp.run';
 }
 const ASR_WS_PATH = '/asr';
 let ws = null;
