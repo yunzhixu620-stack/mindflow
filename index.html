@@ -1491,21 +1491,26 @@ async function doLogin() {
   document.getElementById('loginError').classList.remove('show');
 
   try {
+    console.log('Logging in with:', { username });
     const res = await fetch(AUTH_PROXY + '/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
     const data = await res.json();
+    console.log('Login response:', res.status, data);
     if (!res.ok) { showAuthError('loginError', data.error || '登录失败'); return; }
 
     // 保存 token 和配置
     localStorage.setItem('mindflow_token', data.token);
     localStorage.setItem('mindflow_username', data.username);
+    localStorage.setItem('mindflow_proxy', AUTH_PROXY);
     applyConfigFromServer(data.config);
     showMainApp();
+    showToast('登录成功，欢迎 ' + data.username + '！', 'success');
   } catch(e) {
-    showAuthError('loginError', '网络错误，请检查网络后重试');
+    console.error('Login Error:', e);
+    showAuthError('loginError', '网络错误: ' + (e.message || '请检查网络后重试'));
   } finally {
     btn.disabled = false; btn.textContent = '登录';
   }
@@ -1519,31 +1524,39 @@ async function doRegister() {
   if (password !== confirm) { showAuthError('registerError', '两次密码不一致'); return; }
   if (password.length < 6) { showAuthError('registerError', '密码至少 6 位'); return; }
 
-  // 获取 API 配置
-  const proxyUrl = document.getElementById('authProxyUrl') ? document.getElementById('authProxyUrl').value.trim() : '';
-  const apiKey    = document.getElementById('authApiKey') ? document.getElementById('authApiKey').value.trim() : '';
-  if (!proxyUrl) { showAuthError('registerError', '请填写「API 代理地址」（必填）'); return; }
+  // 获取 API 配置（确保不是 undefined）
+  const authProxyUrlEl = document.getElementById('authProxyUrl');
+  const authApiKeyEl = document.getElementById('authApiKey');
+  const proxyUrl = authProxyUrlEl ? (authProxyUrlEl.value || '').trim() : '';
+  const apiKey = authApiKeyEl ? (authApiKeyEl.value || '').trim() : '';
+  
+  // 使用 AUTH_PROXY 作为默认，不强制用户填写
+  const finalProxyUrl = proxyUrl || AUTH_PROXY;
 
   const btn = document.getElementById('registerBtn');
   btn.disabled = true; btn.textContent = '注册中...';
   document.getElementById('registerError').classList.remove('show');
 
   try {
+    console.log('Registering with:', { username, apiKey: apiKey || '(empty)' });
     const res = await fetch(AUTH_PROXY + '/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, apiKey }),
+      body: JSON.stringify({ username, password, apiKey: apiKey || '' }),
     });
     const data = await res.json();
+    console.log('Register response:', res.status, data);
     if (!res.ok) { showAuthError('registerError', data.error || '注册失败'); return; }
 
     localStorage.setItem('mindflow_token', data.token);
     localStorage.setItem('mindflow_username', data.username);
+    localStorage.setItem('mindflow_proxy', finalProxyUrl);
     applyConfigFromServer(data.config);
     showMainApp();
     showToast('注册成功，欢迎 ' + data.username + '！', 'success');
   } catch(e) {
-    showAuthError('registerError', '网络错误，请检查网络后重试');
+    console.error('Registration Error:', e);
+    showAuthError('registerError', '网络错误: ' + (e.message || '请检查网络后重试'));
   } finally {
     btn.disabled = false; btn.textContent = '注册并登录';
   }
