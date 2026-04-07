@@ -362,6 +362,29 @@
     display: flex; flex-direction: column; gap: 2px; z-index: 60;
   }
 
+  /* 手机端导图顶部导航栏 */
+  .mindmap-navbar {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 44px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 8px 0 4px;
+    z-index: 70;
+  }
+  .mindmap-navbar.hidden { display: none; }
+  .nav-btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 10px; border-radius: var(--radius-md);
+    border: none; background: transparent;
+    color: var(--text-secondary); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all var(--transition);
+  }
+  .nav-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .nav-btn.new-btn { background: var(--accent-subtle); color: var(--accent); }
+  .nav-btn.new-btn:hover { background: var(--accent); color: white; }
+  .nav-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+
   /* 小地图 */
   .minimap-container {
     position: absolute; bottom: 16px; right: 58px;
@@ -1145,6 +1168,22 @@
 
   <!-- 右侧导图区域 -->
   <div class="mindmap-area" id="mindmapArea">
+    <!-- 手机端顶部导航栏（有导图时显示） -->
+    <div class="mindmap-navbar hidden" id="mindmapNavbar">
+      <button class="nav-btn" onclick="closeCurrentMindmap()" title="返回/关闭">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        <span>返回</span>
+      </button>
+      <button class="nav-btn new-btn" onclick="createNewMindmap()" title="新建导图">
+        <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        <span>新建</span>
+      </button>
+    </div>
+
     <div id="jsmind_container"></div>
 
     <!-- 空状态引导 -->
@@ -3366,6 +3405,9 @@ function renderMindmap(data) {
   // 显示布局切换按钮
   const layoutCtrls = document.getElementById('layoutControls');
   if (layoutCtrls) layoutCtrls.classList.remove('hidden');
+  // 手机端：显示顶部导航栏
+  const navbar = document.getElementById('mindmapNavbar');
+  if (navbar) navbar.classList.remove('hidden');
   State.mindmapData = data;
   State.dragOffsetX = 0;
   State.dragOffsetY = 0;
@@ -3565,6 +3607,45 @@ function clearAll() {
   State.mindmapData = null; State.chatHistory = []; State.transcript = ''; State.currentHistoryId = null;
   State.dragOffsetX = 0; State.dragOffsetY = 0;
   currentLayoutDir = 'right'; // 重置布局方向
+  document.getElementById('chatMessages').innerHTML = '';
+  document.getElementById('jsmind_container').innerHTML = '';
+  document.getElementById('placeholder').style.display = '';
+  document.getElementById('sparkList').innerHTML = '';
+  document.getElementById('zoomControls').style.display = 'none';
+  document.getElementById('layoutControls').classList.add('hidden');
+  document.getElementById('minimapContainer').classList.add('hidden');
+  // 手机端：隐藏顶部导航栏
+  const navbar = document.getElementById('mindmapNavbar');
+  if (navbar) navbar.classList.add('hidden');
+  State.zoomScale = 1.0;
+  document.getElementById('zoomLevel').textContent = '100%';
+  showToast('已清空');
+  // 滚动回左侧输入区
+  document.getElementById('userInput').scrollIntoView({ behavior: 'smooth' });
+  return true;
+}
+
+// 关闭当前导图，返回输入界面
+function closeCurrentMindmap() {
+  State.mindmapData = null;
+  document.getElementById('jsmind_container').innerHTML = '';
+  document.getElementById('placeholder').style.display = '';
+  document.getElementById('zoomControls').style.display = 'none';
+  document.getElementById('layoutControls').classList.add('hidden');
+  // 手机端：隐藏顶部导航栏
+  const navbar = document.getElementById('mindmapNavbar');
+  if (navbar) navbar.classList.add('hidden');
+  // 滚动回左侧
+  document.getElementById('userInput').scrollIntoView({ behavior: 'smooth' });
+  showToast('已关闭导图');
+}
+
+// 新建导图：清空输入，创建新导图
+function createNewMindmap() {
+  closeCurrentMindmap();
+  document.getElementById('userInput').value = '';
+  document.getElementById('userInput').focus();
+}
   document.getElementById('chatMessages').innerHTML = '';
   document.getElementById('jsmind_container').innerHTML = '';
   document.getElementById('placeholder').style.display = '';
