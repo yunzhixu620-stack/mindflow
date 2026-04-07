@@ -1532,7 +1532,7 @@ async function doRegister() {
     const res = await fetch(AUTH_PROXY + '/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, apiKey, apiBase: proxyUrl }),
+      body: JSON.stringify({ username, password, apiKey }),
     });
     const data = await res.json();
     if (!res.ok) { showAuthError('registerError', data.error || '注册失败'); return; }
