@@ -302,33 +302,6 @@
     50% { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
   }
   .voice-btn svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
-  
-  /* ===== 语音波形动画 ===== */
-  .voice-waveform {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    display: none; align-items: center; gap: 4px; padding: 12px 20px;
-    background: var(--bg-elevated); border: 1px solid var(--border-default);
-    border-radius: var(--radius-full); box-shadow: var(--shadow-lg); z-index: 1000;
-  }
-  .voice-waveform.active { display: flex; animation: fadeIn 0.2s ease; }
-  .voice-waveform-bar {
-    width: 4px; height: 20px; background: var(--danger); border-radius: 2px;
-    animation: wave 0.8s ease-in-out infinite;
-  }
-  .voice-waveform-bar:nth-child(1) { animation-delay: 0s; }
-  .voice-waveform-bar:nth-child(2) { animation-delay: 0.1s; }
-  .voice-waveform-bar:nth-child(3) { animation-delay: 0.2s; }
-  .voice-waveform-bar:nth-child(4) { animation-delay: 0.3s; }
-  .voice-waveform-bar:nth-child(5) { animation-delay: 0.4s; }
-  .voice-waveform-text { margin-left: 8px; font-size: 13px; color: var(--text-secondary); }
-  @keyframes wave {
-    0%, 100% { height: 8px; }
-    50% { height: 24px; }
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateX(-50%) translateY(10px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0); }
-  }
 
   /* ===== 右侧导图区域 ===== */
   .mindmap-area { flex: 1; position: relative; overflow: hidden; background: var(--bg-base); cursor: grab; }
@@ -1168,16 +1141,6 @@
         </button>
       </div>
     </div>
-  </div>
-
-  <!-- 语音波形动画 -->
-  <div class="voice-waveform" id="voiceWaveform">
-    <div class="voice-waveform-bar"></div>
-    <div class="voice-waveform-bar"></div>
-    <div class="voice-waveform-bar"></div>
-    <div class="voice-waveform-bar"></div>
-    <div class="voice-waveform-bar"></div>
-    <span class="voice-waveform-text">录音中...</span>
   </div>
 
   <!-- 右侧导图区域 -->
@@ -2424,110 +2387,106 @@ function convertToMarkdown(node, depth) {
   return md;
 }
 
+// ============================================================
+// 核心：利用 jsMind screenshot 插件内部方法，返回完整导图 dataURL
+// shoot() 会正确合并背景+线条+节点所有层，但只能直接下载
+// 这里 hack 它的 download 步骤，拿到 canvas dataURL
+// ============================================================
+function getMindmapDataURL() {
+  return new Promise((resolve, reject) => {
+    if (!State.jm) { reject(new Error('导图未初始化')); return; }
+
+    // 方案A：利用 screenshot 插件内部的 create_canvas / draw_* 方法
+    // 这些方法会正确绘制完整导图（包含所有图层）
+    try {
+      const ss = State.jm.screenshot;
+      if (ss && typeof ss.create_canvas === 'function') {
+        const canvas = ss.create_canvas();
+        const ctx = canvas.getContext('2d');
+        ctx.scale(ss.dpr || window.devicePixelRatio || 1, ss.dpr || window.devicePixelRatio || 1);
+
+        Promise.resolve(ctx)
+          .then(() => ss.draw_background(ctx))
+          .then(() => ss.draw_lines(ctx))
+          .then(() => ss.draw_nodes(ctx))
+          .then(() => {
+            const dataUrl = canvas.toDataURL('image/png');
+            resolve(dataUrl);
+          })
+          .catch(e => {
+            console.warn('screenshot plugin internal method failed, falling back', e);
+            fallbackGetDataURL().then(resolve).catch(reject);
+          });
+        return;
+      }
+    } catch(e) {
+      console.warn('screenshot plugin access failed, falling back', e);
+    }
+
+    // 方案B：手动合并 jsMind 容器内所有 canvas 图层
+    fallbackGetDataURL().then(resolve).catch(reject);
+  });
+}
+
+// 备用：手动合并所有 canvas 层
+function fallbackGetDataURL() {
+  return new Promise((resolve, reject) => {
+    const container = document.getElementById('jsmind_container');
+    if (!container) { reject(new Error('找不到导图容器')); return; }
+
+    const canvases = Array.from(container.querySelectorAll('canvas'));
+    if (canvases.length === 0) { reject(new Error('找不到 canvas')); return; }
+
+    // 取所有 canvas 中最大的尺寸作为输出尺寸
+    let maxW = 0, maxH = 0;
+    canvases.forEach(c => {
+      if (c.width > maxW) maxW = c.width;
+      if (c.height > maxH) maxH = c.height;
+    });
+    if (maxW <= 0 || maxH <= 0) { reject(new Error('canvas 尺寸异常')); return; }
+
+    const merged = document.createElement('canvas');
+    merged.width = maxW;
+    merged.height = maxH;
+    const ctx = merged.getContext('2d');
+
+    // 深色背景
+    ctx.fillStyle = '#09090b';
+    ctx.fillRect(0, 0, maxW, maxH);
+
+    // 按 DOM 顺序叠加所有层
+    canvases.forEach(c => {
+      if (c.width > 0 && c.height > 0) {
+        ctx.drawImage(c, 0, 0, maxW, maxH);
+      }
+    });
+
+    const dataUrl = merged.toDataURL('image/png');
+    resolve(dataUrl);
+  });
+}
+
+// PNG 导出
 function exportToPng() {
   if (!State.jm) {
     showToast('请先生成思维导图', 'error');
     return;
   }
   showToast('正在生成图片...');
-  try {
-    // 使用 jsMind 官方 screenshot 插件
-    State.jm.shoot();
-    showToast('已导出 PNG 图片');
-  } catch(e) { 
-    console.error('PNG export error:', e);
-    showToast('图片导出失败', 'error');
-  }
-}
-
-function fallbackHtml2CanvasPng() {
-  if (!window.html2canvas) {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
-    script.onload = () => doHtml2CanvasPng();
-    script.onerror = () => {
-      showToast('导出库加载失败，请刷新重试', 'error');
-    };
-    document.head.appendChild(script);
-  } else {
-    doHtml2CanvasPng();
-  }
-}
-
-function doHtml2CanvasPng() {
-  const container = document.getElementById('jsmind_container');
-  if (!container) {
-    showToast('当前无法获取思维导图', 'error');
-    return;
-  }
-  
-  html2canvas(container, {
-    backgroundColor: '#09090b',
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    allowTaint: true
-  }).then(canvas => {
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'mindflow_' + getDateStr() + '.png';
-    a.click();
-    showToast('已导出 PNG 图片');
-  }).catch(e => {
-    console.error('html2canvas error:', e);
-    showToast('图片导出失败', 'error');
-  });
-}
-
-// 获取并合并 jsMind 的所有 canvas 层（备用方案）
-function getMergedCanvas() {
-  const container = document.getElementById('jsmind_container');
-  if (!container) return null;
-  
-  const canvases = container.querySelectorAll('canvas');
-  if (canvases.length === 0) return null;
-  
-  // 找到最大的 canvas
-  let mainCanvas = canvases[0];
-  let maxSize = 0;
-  canvases.forEach(c => {
-    const size = c.width * c.height;
-    if (size > maxSize) {
-      maxSize = size;
-      mainCanvas = c;
-    }
-  });
-  
-  const width = mainCanvas.width;
-  const height = mainCanvas.height;
-  if (width <= 0 || height <= 0) return null;
-  
-  const merged = document.createElement('canvas');
-  merged.width = width;
-  merged.height = height;
-  const ctx = merged.getContext('2d');
-  
-  ctx.fillStyle = '#09090b';
-  ctx.fillRect(0, 0, width, height);
-  
-  canvases.forEach(c => {
-    ctx.drawImage(c, 0, 0, width, height);
-  });
-  
-  return merged;
-}
-
-function fallbackPngExport() {
-  const container = document.getElementById('jsmind_container');
-  const rect = container.getBoundingClientRect();
-  const svgStr = '<svg xmlns="http://www.w3.org/2000/svg" width="' + rect.width + '" height="' + rect.height + '"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" style="background:#09090b;padding:20px">' + container.innerHTML + '</div></foreignObject></svg>';
-  const blob = new Blob([svgStr], { type: 'image/svg+xml' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'mindflow_' + getDateStr() + '.svg';
-  a.click(); URL.revokeObjectURL(url);
-  showToast('已导出 SVG 图片（更高质量）');
+  getMindmapDataURL()
+    .then(dataUrl => {
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'mindflow_' + getDateStr() + '.png';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      showToast('✅ 已导出 PNG 图片');
+    })
+    .catch(e => {
+      console.error('PNG export error:', e);
+      showToast('图片导出失败：' + e.message, 'error');
+    });
 }
 
 function downloadText(content, filename, mime) {
@@ -2545,76 +2504,91 @@ async function exportToPdf() {
   }
   showToast('正在生成 PDF...');
   try {
-    // 动态加载 jsPDF
+    // 1. 加载 jsPDF
     if (!window.jspdf) {
       const script = document.createElement('script');
       script.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
       document.head.appendChild(script);
       await new Promise((resolve, reject) => {
         script.onload = resolve;
-        script.onerror = () => reject(new Error('jsPDF 加载失败'));
+        script.onerror = () => reject(new Error('jsPDF 加载失败，请检查网络'));
       });
     }
-
     const { jsPDF } = window.jspdf;
-    
-    // 使用 jsMind 官方 screenshot 插件获取图片
-    const container = State.jm.view.getContainer();
-    
-    const imgData = await domtoimage.toPng(container, {
-      bgcolor: '#09090b',
-      scale: 2
-    });
-    
-    // 从 dataUrl 获取图像尺寸
+
+    // 2. 获取完整导图 dataURL（复用 PNG 的逻辑，保证全图）
+    const imgData = await getMindmapDataURL();
+
+    // 3. 读取图像真实尺寸
     const img = new Image();
     await new Promise((resolve, reject) => {
       img.onload = resolve;
       img.onerror = reject;
       img.src = imgData;
     });
-    const imgW = img.width;
-    const imgH = img.height;
+    const imgW = img.naturalWidth || img.width;
+    const imgH = img.naturalHeight || img.height;
 
-    // 计算 PDF 尺寸
-    const a4W = 210;
-    const a4H = 297;
+    // 4. 自适应横/竖版，边距 15mm，留 20mm 给标题
     const margin = 15;
-    const maxW = a4W - margin * 2;
+    const titleH = 20;
+    const a4W = 210, a4H = 297;
     const ratio = imgH / imgW;
-    const pdfW = maxW;
-    const pdfH = pdfW * ratio;
 
-    const availH = a4H - margin - 30;
-    const orientation = (pdfH > availH) ? 'landscape' : 'portrait';
-    const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
+    // 判断横/竖版
+    const portraitContentW = a4W - margin * 2;
+    const portraitContentH = a4H - margin * 2 - titleH;
+    const landscapeContentW = a4H - margin * 2;
+    const landscapeContentH = a4W - margin * 2 - titleH;
 
-    const rootTopic = State.mindmapData?.topic || 'MindFlow 思维导图';
+    let orientation, finalW, finalH;
+    const portraitH = portraitContentW * ratio;
+    if (portraitH <= portraitContentH) {
+      // 竖版放得下
+      orientation = 'portrait';
+      finalW = portraitContentW;
+      finalH = portraitH;
+    } else {
+      // 改横版
+      orientation = 'landscape';
+      const lscH = landscapeContentW * ratio;
+      if (lscH <= landscapeContentH) {
+        finalW = landscapeContentW;
+        finalH = lscH;
+      } else {
+        // 横版也放不下，按高度缩
+        finalH = landscapeContentH;
+        finalW = finalH / ratio;
+      }
+    }
+
     const pageW = orientation === 'portrait' ? a4W : a4H;
     const pageH = orientation === 'portrait' ? a4H : a4W;
-    
-    doc.setFontSize(14);
-    doc.setTextColor(99, 102, 241);
-    doc.text('MindFlow', margin, margin + 4);
-    doc.setFontSize(10);
-    doc.setTextColor(120, 120, 120);
-    doc.text(rootTopic, margin, margin + 9);
-    doc.setDrawColor(240, 240, 240);
-    doc.line(margin, margin + 11, pageW - margin, margin + 11);
+    const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' });
 
-    const imgTop = margin + 14;
-    const availContentH = pageH - imgTop - margin;
-    const finalW = Math.min(pdfW, (availContentH / ratio));
-    const finalH = finalW * ratio;
+    // 5. 标题区
+    const rootTopic = State.mindmapData?.topic || 'MindFlow 思维导图';
+    doc.setFontSize(13);
+    doc.setTextColor(99, 102, 241);
+    doc.text('MindFlow', margin, margin + 5);
+    doc.setFontSize(9);
+    doc.setTextColor(130, 130, 130);
+    doc.text(rootTopic, margin, margin + 11);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, margin + 14, pageW - margin, margin + 14);
+
+    // 6. 居中绘制导图
+    const imgTop = margin + titleH;
     const imgLeft = (pageW - finalW) / 2;
     doc.addImage(imgData, 'PNG', imgLeft, imgTop, finalW, finalH);
 
-    doc.setFontSize(8);
+    // 7. 页脚
+    doc.setFontSize(7);
     doc.setTextColor(180, 180, 180);
     doc.text('由 MindFlow 生成 · ' + getDateStr(), margin, pageH - margin / 2);
 
     doc.save('mindflow_' + getDateStr() + '.pdf');
-    showToast('已导出 PDF 文件');
+    showToast('✅ 已导出 PDF 文件');
   } catch(e) {
     console.error('PDF export error:', e);
     showToast('PDF 导出失败：' + e.message, 'error');
@@ -2829,14 +2803,13 @@ function generateUUID() {
 
 async function toggleVoice() {
   const btn = document.getElementById('voiceBtn');
-  const waveform = document.getElementById('voiceWaveform');
   if (State.isRecording) {
     // 停止录音
     stopASR();
     State.isRecording = false;
     btn.classList.remove('recording');
     btn.innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
-    waveform.classList.remove('active');
+    showToast('录音已停止');
     if (State.transcript.trim()) {
       document.getElementById('userInput').value = State.transcript.trim();
       sendMessage();
@@ -2855,7 +2828,7 @@ async function toggleVoice() {
       State.isRecording = true;
       btn.classList.add('recording');
       btn.innerHTML = '<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" fill="currentColor" stroke="none"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>';
-      waveform.classList.add('active');
+      showToast('录音中，说话后点击停止...');
     } catch (e) {
       showToast('启动语音识别失败：' + e.message, 'error');
       console.error(e);
