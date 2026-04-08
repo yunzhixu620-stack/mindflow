@@ -1514,7 +1514,7 @@ function showMainApp() {
   document.getElementById('userBadge').style.display = 'flex';
   document.getElementById('profileBtn').style.display = 'flex';
   window.currentUsername = username;
-  document.addEventListener('click', function(e){if(!e.target.closest('#fcQuickModal'); !e.target.closest('#fcQuickBtn'); !e.target.closest('#profileMenu'); !e.target.closest('#profileBtn'); !e.target.closest('#changePwdModal'); !e.target.closest('#changePwdBackdrop')){closeFcQuick();var pm=document.getElementById('profileMenu');if(pm)pm.classList.remove('show');var cp=document.getElementById('changePwdModal');var cb=document.getElementById('changePwdBackdrop');if(cp)cp.classList.remove('show');if(cb)cb.classList.remove('show');}});
+  document.addEventListener('click', function(e){if(!e.target.closest('#fcQuickModal') && !e.target.closest('#fcQuickBtn') && !e.target.closest('#profileMenu') && !e.target.closest('#profileBtn') && !e.target.closest('#changePwdModal') && !e.target.closest('#changePwdBackdrop')){closeFcQuick();var pm=document.getElementById('profileMenu');if(pm)pm.classList.remove('show');var cp=document.getElementById('changePwdModal');var cb=document.getElementById('changePwdBackdrop');if(cp)cp.classList.remove('show');if(cb)cb.classList.remove('show');}});
   document.getElementById('userNameDisplay').textContent = username;
   document.getElementById('userAvatar').textContent = username[0].toUpperCase();
 
