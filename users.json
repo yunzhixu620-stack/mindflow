@@ -9,7 +9,7 @@
     }
   },
   "minions": {
-    "passwordHash": "c5092e9228106698a83e8c71a1877ff120f6eaa07cb235b448fc9eb112fd9429",
+    "passwordHash": "8a9c57708d061262e5d2484a10c6b977dd8ac13ec51ccf0b2912a10511bf2ada",
     "createdAt": "2026-04-02T07:58:46.872Z",
     "config": {
       "apiKey": "",
