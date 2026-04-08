@@ -916,6 +916,113 @@
     transition: all var(--transition);
   }
   .user-logout-btn:hover { color: var(--danger); background: var(--danger-subtle); }
+
+  /* ===== FC 蹇嵎鍦板潃寮圭獥 ===== */
+  .fc-quick-modal {
+    position: fixed; z-index: 9000;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 16px 18px 14px;
+    width: min(340px, calc(100vw - 24px));
+    display: none;
+  }
+  .fc-quick-modal.show { display: block; }
+  .fc-quick-modal h4 { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+  .fc-quick-input {
+    width: 100%; padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-base); color: var(--text-primary);
+    font-size: 12.5px; font-family: inherit; outline: none;
+    box-sizing: border-box;
+  }
+  .fc-quick-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-subtle); }
+  .fc-quick-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; margin-bottom: 12px; }
+  .fc-quick-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  /* 鎵嬫満绔畾浣嶄粠椤堕儴寰€涓?*/
+  @media (max-width: 480px) {
+    .fc-quick-modal { top: max(56px, calc(env(safe-area-inset-top) + 56px)) !important; right: 8px !important; left: 8px !important; width: auto !important; }
+  }
+
+  /* ===== 鎵嬫満绔€屾垜鐨勩€嶈彍鍗?===== */
+  .profile-btn {
+    display: none;
+    height: 28px; padding: 0 10px;
+    border-radius: var(--radius-md); border: 1px solid var(--border-default);
+    background: var(--bg-elevated); color: var(--text-secondary);
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    font-family: inherit; align-items: center; gap: 5px;
+    white-space: nowrap; transition: all var(--transition);
+  }
+  .profile-btn:hover { border-color: var(--border-default); color: var(--text-primary); }
+  @media (max-width: 480px) {
+    .profile-btn { display: flex; }
+    /* 鎵嬫満绔殣钘?PC 鐗堥€€鍑烘寜閽?*/
+    .user-logout-btn { display: none; }
+    .user-badge { padding: 3px 6px; gap: 4px; }
+    #userNameDisplay { display: none; }
+  }
+
+  /* 鎴戠殑涓嬫媺鑿滃崟 */
+  .profile-menu {
+    position: fixed;
+    z-index: 9000;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 6px;
+    min-width: 180px;
+    display: none;
+  }
+  .profile-menu.show { display: block; }
+  .profile-menu-user {
+    padding: 8px 10px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+    margin-bottom: 4px;
+  }
+  .profile-menu-user .pm-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .profile-menu-user .pm-sub { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .profile-menu-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text-secondary); cursor: pointer;
+    transition: all var(--transition);
+  }
+  .profile-menu-item:hover { background: var(--bg-hover); color: var(--text-primary); }
+  .profile-menu-item.danger:hover { background: var(--danger-subtle); color: var(--danger); }
+  .profile-menu-item svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+
+  /* 淇敼瀵嗙爜寮圭獥 */
+  .change-pwd-modal {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    background: var(--bg-elevated); border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl); padding: 22px 22px 18px;
+    width: min(360px, calc(100vw - 24px));
+    box-shadow: var(--shadow-lg); z-index: 9100; display: none;
+  }
+  .change-pwd-modal.show { display: block; }
+  .change-pwd-modal h4 { font-size: 14px; font-weight: 600; margin-bottom: 16px; }
+  .change-pwd-input {
+    width: 100%; padding: 8px 10px; margin-bottom: 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-base); color: var(--text-primary);
+    font-size: 12.5px; font-family: inherit; outline: none; box-sizing: border-box;
+  }
+  .change-pwd-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-subtle); }
+  .change-pwd-error { font-size: 12px; color: var(--danger); margin-bottom: 8px; min-height: 16px; }
+  .change-pwd-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+
+  /* 閫氱敤閬僵灞?*/
+  .modal-backdrop {
+    position: fixed; inset: 0; z-index: 8999;
+    background: rgba(0,0,0,0.3); display: none;
+  }
+  .modal-backdrop.show { display: block; }
+
 </style>
 </head>
 <body>
@@ -1082,14 +1189,17 @@
         </div>
       </div>
     </div>
+    <!--FC-->
+    <button class="btn-icon" id="fcQuickBtn" onclick="toggleFcQuick(event)" title="修改FC代理地址" style="font-size:10.5px;font-weight:700;color:var(--accent);padding:0 6px;min-width:28px;">FC</button>
     <div class="topbar-divider"></div>
-    <!-- 用户信息 -->
-    <div class="user-badge" id="userBadge" style="display:none" title="当前登录用户">
+    <!--用户信息-->   <div class="user-badge" id="userBadge" style="display:none" title="当前登录用户">
       <div class="user-avatar" id="userAvatar">?</div>
       <span id="userNameDisplay">用户</span>
       <button class="user-logout-btn" onclick="doLogout()" title="退出登录">退出</button>
     </div>
-    <button class="btn-icon" onclick="toggleSettings()" title="设置">
+    
+    <!--;aC6;:-->
+    <button class="profile-btn" id="profileBtn" style="display:none" onclick="toggleProfileMenu(event)">我的</button><button class="btn-icon" onclick="toggleSettings()" title="设置">
       <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="3"/>
         <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -1402,6 +1512,9 @@ function showMainApp() {
   // 显示用户信息
   const username = localStorage.getItem('mindflow_username') || '?';
   document.getElementById('userBadge').style.display = 'flex';
+  document.getElementById('profileBtn').style.display = 'flex';
+  window.currentUsername = username;
+  document.addEventListener('click', function(e){if(!e.target.closest('#fcQuickModal'); !e.target.closest('#fcQuickBtn'); !e.target.closest('#profileMenu'); !e.target.closest('#profileBtn'); !e.target.closest('#changePwdModal'); !e.target.closest('#changePwdBackdrop')){closeFcQuick();var pm=document.getElementById('profileMenu');if(pm)pm.classList.remove('show');var cp=document.getElementById('changePwdModal');var cb=document.getElementById('changePwdBackdrop');if(cp)cp.classList.remove('show');if(cb)cb.classList.remove('show');}});
   document.getElementById('userNameDisplay').textContent = username;
   document.getElementById('userAvatar').textContent = username[0].toUpperCase();
 
@@ -3681,6 +3794,11 @@ function showToast(msg, type) {
 
 // ==================== 启动 ====================
 init();
-</script>
+function t<div class=fc-quick-modal id=fcQuickModal><h4>淇敼 FC 浠ｇ悊鍦板潃</h4><input class=fc-quick-input id=fcQuickInput type=url placeholder=https://your-fc.cn-hangzhou.fcapp.run autocomplete=off/><div class=fc-quick-hint>濉啓闃块噷浜戝嚱鏁拌绠桭C浠ｇ悊鍦板潃</div><div class=fc-quick-actions><button class=btn-secondary btn-sm onclick=closeFcQuick()>鍙栨秷</button><button class=btn-primary btn-sm onclick=saveFcQuick()>淇濆瓨</button></div></div><div class=profile-menu id=profileMenu><div class=profile-menu-user><div class=pm-name id=profileMenuName>鐢ㄦ埛</div><div class=pm-sub>宸茬櫥褰?/div></div><div class=profile-menu-item onclick=openChangePwd()>淇敼瀵嗙爜</div><div class=profile-menu-item onclick=openFcFromMenu()>淇敼FC鍦板潃</div><div class=profile-menu-item danger onclick=doLogout()>閫€鍑虹櫥褰?/div></div><div class=modal-backdrop id=changePwdBackdrop onclick=closeChangePwd()></div><div class=change-pwd-modal id=changePwdModal><h4>淇敼瀵嗙爜</h4><input class=change-pwd-input id=oldPwdInput type=password placeholder=褰撳墠瀵嗙爜/><input class=change-pwd-input id=newPwdInput type=password placeholder=鏂板瘑鐮侊紙鑷冲皯6浣嶏級/><input class=change-pwd-input id=newPwd2Input type=password placeholder=纭鏂板瘑鐮?><div class=change-pwd-error id=changePwdError></div><div class=change-pwd-actions><button class=btn-secondary btn-sm onclick=closeChangePwd()>鍙栨秷</button><button class=btn-primary btn-sm onclick=doChangePwd()>纭淇敼</button></div></div>oggleFcQuick(e){e.stopPropagation();var m=document.getElementById(chr(102)+chr(99)+chr(81)+chr(117)+chr(105)+chr(99)+chr(107)+chr(77)+chr(111)+chr(100)+chr(97)+chr(108));var i=document.getElementById(chr(102)+chr(99)+chr(81)+chr(117)+chr(105)+chr(99)+chr(107)+chr(73)+chr(110)+chr(112)+chr(117)+chr(116));var s=localStorage.getItem(chr(102)+chr(99)+chr(80)+chr(114)+chr(111)+chr(120)+chr(121)+chr(85)+chr(114)+chr(108));if(i)i.value=s; chr(39)+chr(39);if(m)m.classList.toggle(chr(115)+chr(104)+chr(111)+chr(119));document.getElementById(chr(112)+chr(114)+chr(111)+chr(102)+chr(105)+chr(108)+chr(101)+chr(77)+chr(101)+chr(110)+chr(117)).classList.remove(chr(115)+chr(104)+chr(111)+chr(119))}function closeFcQuick(){var m=document.getElementById(chr(102)+chr(99)+chr(81)+chr(117)+chr(105)+chr(99)+chr(107)+chr(77)+chr(111)+chr(100)+chr(97)+chr(108));if(m)m.classList.remove(chr(115)+chr(104)+chr(111)+chr(119))}
+function saveFcQuick(){var i=document.getElementById(chr(102)+chr(99)+chr(81)+chr(117)+chr(105)+chr(99)+chr(107)+chr(73)+chr(110)+chr(112)+chr(117)+chr(116));var v=i; i.value.trim();if(!v){showToast(chr(233)+chr(98)+chr(97)+chr(105)+chr(106)+chr(240)+chr(50)+chr(231)+chr(136)+chr(177)+chr(67)+chr(70)+chr(67)+chr(231)+chr(132)+chr(159),chr(101)+chr(114)+chr(114)+chr(111)+chr(114));return}localStorage.setItem(chr(102)+chr(99)+chr(80)+chr(114)+chr(111)+chr(120)+chr(121)+chr(85)+chr(114)+chr(108),v);closeFcQuick();showToast(chr(67)+chr(70)+chr(231)+chr(100)+chr(133)+chr(231)+chr(82)+chr(159),chr(115)+chr(117)+chr(99)+chr(99)+chr(101)+chr(115)+chr(115));if(window.setProxyUrl)window.setProxyUrl(v)}
+function toggleProfileMenu(e){e.stopPropagation();var m=document.getElementById(chr(112)+chr(114)+chr(111)+chr(102)+chr(105)+chr(108)+chr(101)+chr(77)+chr(101)+chr(110)+chr(117));if(m)m.classList.toggle(chr(115)+chr(104)+chr(111)+chr(119));closeFcQuick()}
+function openFcFromMenu(){var m=document.getElementById(chr(112)+chr(114)+chr(111)+chr(102)+chr(105)+chr(108)+chr(101)+chr(77)+chr(101)+chr(110)+chr(117));if(m)m.classList.remove(chr(115)+chr(104)+chr(111)+chr(119));toggleFcQuick({stopPropagation:function(){}})}
+function openChangePwd(){var m=document.getElementById(chr(99)+chr(104)+chr(97)+chr(110)+chr(103)+chr(101)+chr(80)+chr(119)+chr(100)+chr(77)+chr(111)+chr(100)+chr(97)+chr(108));var b=document.getElementById(chr(99)+chr(104)+chr(97)+chr(110)+chr(103)+chr(101)+chr(80)+chr(119)+chr(100)+chr(66)+chr(97)+chr(99)+chr(107)+chr(100)+chr(114)+chr(111)+chr(112));if(m)m.classList.add(chr(115)+chr(104)+chr(111)+chr(119));if(b)b.classList.add(chr(115)+chr(104)+chr(111)+chr(119));var n=document.getElementById(chr(112)+chr(114)+chr(111)+chr(102)+chr(105)+chr(108)+chr(101)+chr(77)+chr(101)+chr(110)+chr(117)+chr(78)+chr(97)+chr(109)+chr(101));if(n; window.currentUsername)n.textContent=window.currentUsername}
+function closeChangePwd(){var m=document.getElementById(chr(99)+chr(104)+chr(97)+chr(110)+chr(103)+chr(101)+chr(80)+chr(119)+chr(100)+chr(77)+chr(111)+chr(100)+chr(97)+chr(108));var b=document.getElementById(chr(99)+chr(104)+chr(97)+chr(110)+chr(103)+chr(101)+chr(80)+chr(119)+chr(100)+chr(66)+chr(97)+chr(99)+chr(107)+chr(100)+chr(114)+chr(111)+chr(112));var e=document.getElementById(chr(99)+chr(104)+chr(97)+chr(110)+chr(103)+chr(101)+chr(80)+chr(119)+chr(100)+chr(69)+chr(114)+chr(114)+chr(111)+chr(114));if(m)m.classList.remove(chr(115)+chr(104)+chr(111)+chr(119));if(b)b.classList.remove(chr(115)+chr(104)+chr(111)+chr(119));if(e)e.textContent=chr(39)+chr(39);document.getElementById(chr(111)+chr(108)+chr(100)+chr(80)+chr(119)+chr(100)+chr(73)+chr(110)+chr(112)+chr(117)+chr(116)).value=chr(39)+chr(39);document.getElementById(chr(110)+chr(101)+chr(119)+chr(80)+chr(119)+chr(100)+chr(73)+chr(110)+chr(112)+chr(117)+chr(116)).value=chr(39)+chr(39);document.getElementById(chr(110)+chr(101)+chr(119)+chr(80)+chr(119)+chr(100)+chr(50)+chr(73)+chr(110)+chr(112)+chr(117)+chr(116)).value=chr(39)+chr(39)}async function doChangePwd(){var o=document.getElementById(chr(111)+chr(108)+chr(100)+chr(80)+chr(119)+chr(100)+chr(73)+chr(110)+chr(112)+chr(117)+chr(116)).value;var n=document.getElementById(chr(110)+chr(101)+chr(119)+chr(80)+chr(119)+chr(100)+chr(73)+chr(110)+chr(112)+chr(117)+chr(116)).value;var n2=document.getElementById(chr(110)+chr(101)+chr(119)+chr(80)+chr(119)+chr(100)+chr(50)+chr(73)+chr(110)+chr(112)+chr(117)+chr(116)).value;var e=document.getElementById(chr(99)+chr(104)+chr(97)+chr(110)+chr(103)+chr(101)+chr(80)+chr(119)+chr(100)+chr(69)+chr(114)+chr(114)+chr(111)+chr(114));if(!o){e.textContent=chr(233)+chr(98)+chr(97)+chr(105)+chr(106)+chr(240)+chr(50)+chr(231)+chr(136)+chr(177)+chr(67)+chr(70)+chr(67)+chr(231)+chr(132)+chr(159);return}if(n.length<6){e.textContent=chr(230)+chr(150)+chr(135)+chr(233)+chr(135)+chr(136)+chr(231)+chr(150)+chr(135)+chr(59)+chr(54)+chr(59);return}if(n!==n2){e.textContent=chr(59)+chr(59)+chr(233)+chr(135)+chr(136)+chr(231)+chr(150)+chr(135)+chr(59)+chr(67)+chr(111)+chr(110)+chr(102)+chr(105)+chr(114)+chr(109);return}var token=localStorage.getItem(chr(106)+chr(119)+chr(116));var apiBase=localStorage.getItem(chr(102)+chr(99)+chr(80)+chr(114)+chr(111)+chr(120)+chr(121)+chr(85)+chr(114)+chr(108)); localStorage.getItem(chr(65)+chr(80)+chr(73)+chr(66)+chr(65)+chr(83)+chr(69));try{var r=await fetch(apiBase+chr(47)+chr(97)+chr(117)+chr(116)+chr(104)+chr(47)+chr(99)+chr(104)+chr(97)+chr(110)+chr(103)+chr(101)+chr(45)+chr(112)+chr(119)+chr(100),{method:chr(80)+chr(79)+chr(83)+chr(84),headers:{chr(67)+chr(111)+chr(110)+chr(116)+chr(101)+chr(110)+chr(116)+chr(45)+chr(84)+chr(121)+chr(112)+chr(101):chr(97)+chr(112)+chr(112)+chr(108)+chr(105)+chr(99)+chr(97)+chr(116)+chr(105)+chr(111)+chr(110)+chr(47)+chr(106)+chr(115)+chr(111)+chr(110),chr(65)+chr(117)+chr(116)+chr(104)+chr(111)+chr(114)+chr(105)+chr(122)+chr(97)+chr(116)+chr(105)+chr(111)+chr(110):chr(66)+chr(101)+chr(97)+chr(114)+chr(101)+chr(32)+chr(116)+chr(111)+chr(107)+chr(101)+chr(110)),chr(99)+chr(111)+chr(110)+chr(116)+chr(101)+chr(110)+chr(116)+chr(45)+chr(76)+chr(101)+chr(110)+chr(103)+chr(116)+chr(104):chr(50)+chr(48)+chr(48)+chr(59)+chr(117)+chr(116)+chr(102)+chr(45)+chr(56)},body:JSON.stringify({oldPassword:o,newPassword:n})});var d=await r.json();if(r.ok){showToast(chr(230)+chr(150)+chr(135)+chr(231)+chr(82)+chr(159)+chr(40)+chr(83)+chr(117)+chr(99)+chr(99)+chr(101)+chr(115)+chr(115)+chr(41),chr(115)+chr(117)+chr(99)+chr(99)+chr(101)+chr(115)+chr(115));closeChangePwd()}else{var msg=d.message; chr(230)+chr(150)+chr(135)+chr(231)+chr(136)+chr(177);e.textContent=msg}}catch(err){e.textContent=chr(230)+chr(150)+chr(135)+chr(231)+chr(136)+chr(177)+chr(58)+chr(32)+err.message}}</script>
 </body>
 </html>
