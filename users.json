@@ -34,5 +34,14 @@
       "apiBase": "https://dashscope.aliyuncs.com/compatible-mode/v1",
       "model": "qwen-turbo"
     }
+  },
+  "minionsxu": {
+    "passwordHash": "aee0aedee722aedfb3524df1d301fbe40a584c28cb85600af439208d8cc9c440",
+    "createdAt": "2026-04-08T01:55:55.773Z",
+    "config": {
+      "apiKey": "",
+      "apiBase": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen-turbo"
+    }
   }
 }
